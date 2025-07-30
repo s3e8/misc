@@ -1,0 +1,68 @@
+html {
+    box-sizing: border-box
+}
+
+*,*:before,*:after {
+    box-sizing: inherit
+}
+
+body {
+    height: 100vh;
+    margin: 0;
+    background-color: #111;
+    color: gray
+}
+
+.container {
+    position: absolute;
+    inset: 0
+}
+
+body .Console {
+    height: 100%;
+    width: 100%
+}
+
+.Console {
+    overflow-y: scroll;
+    background-color: #111;
+    font-family: monospace;
+    padding: 1em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0
+}
+
+.Console .header {
+    color: #0f0
+}
+
+.Console .header a {
+    color: inherit;
+    text-decoration: none
+}
+
+.Console .cursor {
+    background-color: gray
+}
+
+.Console .in {
+    color: #bb0
+}
+
+.Console .out {
+    color: #fff
+}
+
+.Console .error {
+    color: red
+}
+
+.Console input {
+    width: 100%;
+    height: 0;
+    opacity: 0;
+    visibility: hidden
+}
+
+/*# sourceMappingURL=/waforth/dist/shell-c$L72FAX33.css.map */

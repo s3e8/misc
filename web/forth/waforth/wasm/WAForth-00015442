@@ -1,0 +1,5206 @@
+(module $WAForth
+  (func $shell_emit (;0;) (import "shell" "emit") (param i32))
+  (func $shell_read (;1;) (import "shell" "read") (param i32 i32) (result i32))
+  (func $shell_key (;2;) (import "shell" "key") (result i32))
+  (func $shell_random (;3;) (import "shell" "random") (result i32))
+  (func $shell_load (;4;) (import "shell" "load") (param i32 i32))
+  (func $shell_call (;5;) (import "shell" "call"))
+  (table $table (;0;) (export "table") 196 funcref)
+  (memory $memory (;0;) (export "memory") 1600)
+  (global $tos (;0;) (mut i32) (i32.const 65536))
+  (global $tors (;1;) (mut i32) (i32.const 8192))
+  (global $inputBufferBase (;2;) (mut i32) (i32.const 0))
+  (global $inputBufferSize (;3;) (mut i32) (i32.const 0))
+  (global $sourceID (;4;) (mut i32) (i32.const 0))
+  (global $latest (;5;) (mut i32) (i32.const 133908))
+  (global $here (;6;) (mut i32) (i32.const 133920))
+  (global $nextTableIndex (;7;) (mut i32) (i32.const 196))
+  (global $po (;8;) (mut i32) (i32.const -1))
+  (global $error (;9;) (mut i32) (i32.const 0))
+  (global $currentLocal (;10;) (mut i32) (i32.const 0))
+  (global $lastLocal (;11;) (mut i32) (i32.const -1))
+  (global $firstTemporaryLocal (;12;) (mut i32) (i32.const 0))
+  (global $branchNesting (;13;) (mut i32) (i32.const -1))
+  (global $lastEmitWasGetTOS (;14;) (mut i32) (i32.const 0))
+  (global $cp (;15;) (mut i32) (i32.const 4190))
+  (elem $elem0 (i32.const 16) (ref func) (ref.func $semiCODE))
+  (elem $elem1 (i32.const 17) (ref func) (ref.func $:NONAME))
+  (elem $elem2 (i32.const 18) (ref func) (ref.func $!))
+  (elem $elem3 (i32.const 19) (ref func) (ref.func $?DO))
+  (elem $elem4 (i32.const 20) (ref func) (ref.func $.p))
+  (elem $elem5 (i32.const 21) (ref func) (ref.func $#))
+  (elem $elem6 (i32.const 22) (ref func) (ref.func $#>))
+  (elem $elem7 (i32.const 23) (ref func) (ref.func $#S))
+  (elem $elem8 (i32.const 24) (ref func) (ref.func $'))
+  (elem $elem9 (i32.const 25) (ref func) (ref.func $paren))
+  (elem $elem10 (i32.const 26) (ref func) (ref.func $*))
+  (elem $elem11 (i32.const 27) (ref func) (ref.func $*/))
+  (elem $elem12 (i32.const 28) (ref func) (ref.func $*/MOD))
+  (elem $elem13 (i32.const 29) (ref func) (ref.func $+))
+  (elem $elem14 (i32.const 30) (ref func) (ref.func $+!))
+  (elem $elem15 (i32.const 31) (ref func) (ref.func $+LOOP))
+  (elem $elem16 (i32.const 32) (ref func) (ref.func $comma))
+  (elem $elem17 (i32.const 33) (ref func) (ref.func $-))
+  (elem $elem18 (i32.const 34) (ref func) (ref.func $.))
+  (elem $elem19 (i32.const 35) (ref func) (ref.func $.q))
+  (elem $elem20 (i32.const 36) (ref func) (ref.func $.S))
+  (elem $elem21 (i32.const 37) (ref func) (ref.func $/))
+  (elem $elem22 (i32.const 38) (ref func) (ref.func $/MOD))
+  (elem $elem23 (i32.const 39) (ref func) (ref.func $<>))
+  (elem $elem24 (i32.const 40) (ref func) (ref.func $$Scomma))
+  (elem $elem25 (i32.const 41) (ref func) (ref.func $$Ucomma))
+  (elem $elem26 (i32.const 42) (ref func) (ref.func $0<))
+  (elem $elem27 (i32.const 43) (ref func) (ref.func $0<>))
+  (elem $elem28 (i32.const 44) (ref func) (ref.func $0=))
+  (elem $elem29 (i32.const 45) (ref func) (ref.func $0>))
+  (elem $elem30 (i32.const 46) (ref func) (ref.func $1+))
+  (elem $elem31 (i32.const 47) (ref func) (ref.func $1-))
+  (elem $elem32 (i32.const 48) (ref func) (ref.func $2!))
+  (elem $elem33 (i32.const 49) (ref func) (ref.func $2*))
+  (elem $elem34 (i32.const 50) (ref func) (ref.func $2/))
+  (elem $elem35 (i32.const 51) (ref func) (ref.func $2@))
+  (elem $elem36 (i32.const 52) (ref func) (ref.func $2>R))
+  (elem $elem37 (i32.const 53) (ref func) (ref.func $2DROP))
+  (elem $elem38 (i32.const 54) (ref func) (ref.func $2DUP))
+  (elem $elem39 (i32.const 55) (ref func) (ref.func $2OVER))
+  (elem $elem40 (i32.const 56) (ref func) (ref.func $2R@))
+  (elem $elem41 (i32.const 57) (ref func) (ref.func $2R>))
+  (elem $elem42 (i32.const 58) (ref func) (ref.func $2SWAP))
+  (elem $elem43 (i32.const 59) (ref func) (ref.func $:))
+  (elem $elem44 (i32.const 60) (ref func) (ref.func $semicolon))
+  (elem $elem45 (i32.const 61) (ref func) (ref.func $<))
+  (elem $elem46 (i32.const 62) (ref func) (ref.func $<#))
+  (elem $elem47 (i32.const 63) (ref func) (ref.func $=))
+  (elem $elem48 (i32.const 64) (ref func) (ref.func $>))
+  (elem $elem49 (i32.const 65) (ref func) (ref.func $>BODY))
+  (elem $elem50 (i32.const 66) (ref func) (ref.func $>NUMBER))
+  (elem $elem51 (i32.const 67) (ref func) (ref.func $>R))
+  (elem $elem52 (i32.const 68) (ref func) (ref.func $?DUP))
+  (elem $elem53 (i32.const 69) (ref func) (ref.func $@))
+  (elem $elem54 (i32.const 70) (ref func) (ref.func $ABORT))
+  (elem $elem55 (i32.const 71) (ref func) (ref.func $ABORTq))
+  (elem $elem56 (i32.const 72) (ref func) (ref.func $ABS))
+  (elem $elem57 (i32.const 73) (ref func) (ref.func $ACCEPT))
+  (elem $elem58 (i32.const 74) (ref func) (ref.func $ACTION-OF))
+  (elem $elem59 (i32.const 75) (ref func) (ref.func $ALIGN))
+  (elem $elem60 (i32.const 76) (ref func) (ref.func $ALIGNED))
+  (elem $elem61 (i32.const 77) (ref func) (ref.func $ALLOT))
+  (elem $elem62 (i32.const 78) (ref func) (ref.func $AND))
+  (elem $elem63 (i32.const 79) (ref func) (ref.func $BEGIN))
+  (elem $elem64 (i32.const 80) (ref func) (ref.func $BL))
+  (elem $elem65 (i32.const 81) (ref func) (ref.func $BUFFER:))
+  (elem $elem66 (i32.const 82) (ref func) (ref.func $BYE))
+  (elem $elem67 (i32.const 83) (ref func) (ref.func $C!))
+  (elem $elem68 (i32.const 84) (ref func) (ref.func $Cc))
+  (elem $elem69 (i32.const 85) (ref func) (ref.func $Cq))
+  (elem $elem70 (i32.const 86) (ref func) (ref.func $C@))
+  (elem $elem71 (i32.const 87) (ref func) (ref.func $CELL+))
+  (elem $elem72 (i32.const 88) (ref func) (ref.func $CELLS))
+  (elem $elem73 (i32.const 89) (ref func) (ref.func $CHAR))
+  (elem $elem74 (i32.const 90) (ref func) (ref.func $CHAR+))
+  (elem $elem75 (i32.const 91) (ref func) (ref.func $CHARS))
+  (elem $elem76 (i32.const 92) (ref func) (ref.func $CODE))
+  (elem $elem77 (i32.const 93) (ref func) (ref.func $COMPILEComma))
+  (elem $elem78 (i32.const 94) (ref func) (ref.func $CONSTANT))
+  (elem $elem79 (i32.const 95) (ref func) (ref.func $COUNT))
+  (elem $elem80 (i32.const 96) (ref func) (ref.func $CR))
+  (elem $elem81 (i32.const 97) (ref func) (ref.func $CREATE))
+  (elem $elem82 (i32.const 98) (ref func) (ref.func $DECIMAL))
+  (elem $elem83 (i32.const 99) (ref func) (ref.func $DEFER))
+  (elem $elem84 (i32.const 100) (ref func) (ref.func $DEFER!))
+  (elem $elem85 (i32.const 101) (ref func) (ref.func $DEFER@))
+  (elem $elem86 (i32.const 102) (ref func) (ref.func $DEPTH))
+  (elem $elem87 (i32.const 103) (ref func) (ref.func $DO))
+  (elem $elem88 (i32.const 104) (ref func) (ref.func $DOES>))
+  (elem $elem89 (i32.const 105) (ref func) (ref.func $DROP))
+  (elem $elem90 (i32.const 106) (ref func) (ref.func $DUP))
+  (elem $elem91 (i32.const 107) (ref func) (ref.func $ELSE))
+  (elem $elem92 (i32.const 108) (ref func) (ref.func $EMIT))
+  (elem $elem93 (i32.const 109) (ref func) (ref.func $ENVIRONMENT?))
+  (elem $elem94 (i32.const 110) (ref func) (ref.func $ERASE))
+  (elem $elem95 (i32.const 111) (ref func) (ref.func $EVALUATE))
+  (elem $elem96 (i32.const 112) (ref func) (ref.func $EXECUTE))
+  (elem $elem97 (i32.const 113) (ref func) (ref.func $EXIT))
+  (elem $elem98 (i32.const 114) (ref func) (ref.func $FALSE))
+  (elem $elem99 (i32.const 115) (ref func) (ref.func $FILL))
+  (elem $elem100 (i32.const 116) (ref func) (ref.func $FIND))
+  (elem $elem101 (i32.const 117) (ref func) (ref.func $FM/MOD))
+  (elem $elem102 (i32.const 118) (ref func) (ref.func $HERE))
+  (elem $elem103 (i32.const 119) (ref func) (ref.func $HEX))
+  (elem $elem104 (i32.const 120) (ref func) (ref.func $HOLD))
+  (elem $elem105 (i32.const 121) (ref func) (ref.func $HOLDS))
+  (elem $elem106 (i32.const 122) (ref func) (ref.func $I))
+  (elem $elem107 (i32.const 123) (ref func) (ref.func $IF))
+  (elem $elem108 (i32.const 124) (ref func) (ref.func $IMMEDIATE))
+  (elem $elem109 (i32.const 125) (ref func) (ref.func $INVERT))
+  (elem $elem110 (i32.const 126) (ref func) (ref.func $IS))
+  (elem $elem111 (i32.const 127) (ref func) (ref.func $J))
+  (elem $elem112 (i32.const 128) (ref func) (ref.func $KEY))
+  (elem $elem113 (i32.const 129) (ref func) (ref.func $LATEST))
+  (elem $elem114 (i32.const 130) (ref func) (ref.func $LEAVE))
+  (elem $elem115 (i32.const 131) (ref func) (ref.func $LITERAL))
+  (elem $elem116 (i32.const 132) (ref func) (ref.func $LOOP))
+  (elem $elem117 (i32.const 133) (ref func) (ref.func $LSHIFT))
+  (elem $elem118 (i32.const 134) (ref func) (ref.func $M*))
+  (elem $elem119 (i32.const 135) (ref func) (ref.func $MARKER))
+  (elem $elem120 (i32.const 136) (ref func) (ref.func $MAX))
+  (elem $elem121 (i32.const 137) (ref func) (ref.func $MIN))
+  (elem $elem122 (i32.const 138) (ref func) (ref.func $MOD))
+  (elem $elem123 (i32.const 139) (ref func) (ref.func $MOVE))
+  (elem $elem124 (i32.const 140) (ref func) (ref.func $NEGATE))
+  (elem $elem125 (i32.const 141) (ref func) (ref.func $NIP))
+  (elem $elem126 (i32.const 142) (ref func) (ref.func $OR))
+  (elem $elem127 (i32.const 143) (ref func) (ref.func $OVER))
+  (elem $elem128 (i32.const 144) (ref func) (ref.func $PAD))
+  (elem $elem129 (i32.const 145) (ref func) (ref.func $PARSE))
+  (elem $elem130 (i32.const 146) (ref func) (ref.func $PARSE-NAME))
+  (elem $elem131 (i32.const 147) (ref func) (ref.func $PICK))
+  (elem $elem132 (i32.const 148) (ref func) (ref.func $POSTPONE))
+  (elem $elem133 (i32.const 149) (ref func) (ref.func $QUIT))
+  (elem $elem134 (i32.const 150) (ref func) (ref.func $R>))
+  (elem $elem135 (i32.const 151) (ref func) (ref.func $R@))
+  (elem $elem136 (i32.const 152) (ref func) (ref.func $RANDOM))
+  (elem $elem137 (i32.const 153) (ref func) (ref.func $RECURSE))
+  (elem $elem138 (i32.const 154) (ref func) (ref.func $REFILL))
+  (elem $elem139 (i32.const 155) (ref func) (ref.func $REPEAT))
+  (elem $elem140 (i32.const 156) (ref func) (ref.func $RESTORE-INPUT))
+  (elem $elem141 (i32.const 157) (ref func) (ref.func $ROLL))
+  (elem $elem142 (i32.const 158) (ref func) (ref.func $ROT))
+  (elem $elem143 (i32.const 159) (ref func) (ref.func $RSHIFT))
+  (elem $elem144 (i32.const 160) (ref func) (ref.func $Sq))
+  (elem $elem145 (i32.const 161) (ref func) (ref.func $Seq))
+  (elem $elem146 (i32.const 162) (ref func) (ref.func $S>D))
+  (elem $elem147 (i32.const 163) (ref func) (ref.func $SAVE-INPUT))
+  (elem $elem148 (i32.const 164) (ref func) (ref.func $SCALL))
+  (elem $elem149 (i32.const 165) (ref func) (ref.func $SIGN))
+  (elem $elem150 (i32.const 166) (ref func) (ref.func $SM/REM))
+  (elem $elem151 (i32.const 167) (ref func) (ref.func $SOURCE))
+  (elem $elem152 (i32.const 168) (ref func) (ref.func $SOURCE-ID))
+  (elem $elem153 (i32.const 169) (ref func) (ref.func $SPACE))
+  (elem $elem154 (i32.const 170) (ref func) (ref.func $SPACES))
+  (elem $elem155 (i32.const 171) (ref func) (ref.func $SWAP))
+  (elem $elem156 (i32.const 172) (ref func) (ref.func $THEN))
+  (elem $elem157 (i32.const 173) (ref func) (ref.func $TO))
+  (elem $elem158 (i32.const 174) (ref func) (ref.func $TRUE))
+  (elem $elem159 (i32.const 175) (ref func) (ref.func $TUCK))
+  (elem $elem160 (i32.const 176) (ref func) (ref.func $TYPE))
+  (elem $elem161 (i32.const 177) (ref func) (ref.func $U.))
+  (elem $elem162 (i32.const 178) (ref func) (ref.func $U<))
+  (elem $elem163 (i32.const 179) (ref func) (ref.func $U>))
+  (elem $elem164 (i32.const 180) (ref func) (ref.func $UM*))
+  (elem $elem165 (i32.const 181) (ref func) (ref.func $UM/MOD))
+  (elem $elem166 (i32.const 182) (ref func) (ref.func $UNLOOP))
+  (elem $elem167 (i32.const 183) (ref func) (ref.func $UNTIL))
+  (elem $elem168 (i32.const 184) (ref func) (ref.func $UNUSED))
+  (elem $elem169 (i32.const 185) (ref func) (ref.func $VARIABLE))
+  (elem $elem170 (i32.const 186) (ref func) (ref.func $WHILE))
+  (elem $elem171 (i32.const 187) (ref func) (ref.func $WITHIN))
+  (elem $elem172 (i32.const 188) (ref func) (ref.func $WORD))
+  (elem $elem173 (i32.const 189) (ref func) (ref.func $WORDS))
+  (elem $elem174 (i32.const 190) (ref func) (ref.func $XOR))
+  (elem $elem175 (i32.const 191) (ref func) (ref.func $left-bracket))
+  (elem $elem176 (i32.const 192) (ref func) (ref.func $bracket-tick))
+  (elem $elem177 (i32.const 193) (ref func) (ref.func $bracket-char))
+  (elem $elem178 (i32.const 194) (ref func) (ref.func $\))
+  (elem $elem179 (i32.const 195) (ref func) (ref.func $right-bracket))
+  (elem $elem180 (i32.const 5) (ref func) (ref.func $compileExecute))
+  (elem $elem181 (i32.const 1) (ref func) (ref.func $startDo))
+  (elem $elem182 (i32.const 9) (ref func) (ref.func $endDo))
+  (elem $elem183 (i32.const 2) (ref func) (ref.func $updateDo))
+  (elem $elem184 (i32.const 3) (ref func) (ref.func $pushDataAddress))
+  (elem $elem185 (i32.const 4) (ref func) (ref.func $setLatestBody))
+  (elem $elem186 (i32.const 6) (ref func) (ref.func $pushIndirect))
+  (elem $elem187 (i32.const 7) (ref func) (ref.func $resetMarker))
+  (elem $elem188 (i32.const 8) (ref func) (ref.func $executeDefer))
+  (func $run (;6;) (export "run") (param $silent (;0;) i32)
+    (local $tos i32)
+    global.get $tos
+    local.tee $tos
+    i32.const 1
+    global.set $error
+    block $label0 (param i32) (result i32)
+      loop $label5 (param i32) (result i32)
+        call $REFILL
+        call $pop
+        i32.eqz
+        br_if $label0
+        call $interpret
+        local.set $tos
+        local.get $tos
+        i32.const 65536
+        i32.lt_s
+        if
+          i32.const 131205
+          call $fail
+        end
+        local.get $silent
+        i32.eqz
+        if
+          block $label4 (result i32)
+            block $label3
+              block $label1
+                block $label2
+                  i32.const 133536
+                  i32.load
+                  br_table $label1 $label2 $label3
+                end $label2
+                i32.const 131228
+                br $label4
+              end $label1
+              i32.const 131217
+              br $label4
+            end $label3
+            i32.const 131221
+          end $label4
+          call $ctype
+        end
+        local.get $tos
+        br $label5
+      end $label5
+    end $label0
+    global.set $tos
+    i32.const 4
+    global.set $error
+  )
+  (func $interpret (;7;) (param $tos (;0;) i32) (result i32)
+    (local $findResult i32)
+    (local $findToken i32)
+    (local $error i32)
+    (local $number i32)
+    (local $wordAddr i32)
+    (local $wordLen i32)
+    i32.const 0
+    local.set $error
+    i32.const 8192
+    global.set $tors
+    block $label0
+      loop $label2
+        call $parseName
+        local.set $wordLen
+        local.set $wordAddr
+        local.get $wordLen
+        i32.eqz
+        br_if $label0
+        local.get $wordAddr
+        local.get $wordLen
+        call $find
+        local.set $findResult
+        local.set $findToken
+        local.get $findResult
+        if
+          block $label1
+            i32.const 133536
+            i32.load
+            i32.eqz
+            br_if $label1
+            local.get $findResult
+            i32.const 1
+            i32.eq
+            br_if $label1
+            local.get $tos
+            local.get $findToken
+            call $compileExecute
+            local.set $tos
+            br $label2
+          end $label1
+          local.get $tos
+          local.get $findToken
+          call $execute
+          local.set $tos
+        else
+          local.get $wordAddr
+          local.get $wordLen
+          call $readNumber
+          i32.eqz
+          if (param i32)
+            local.set $number
+            i32.const 133536
+            i32.load
+            if
+              local.get $tos
+              local.get $number
+              call $compilePushConst
+              local.set $tos
+            else
+              local.get $tos
+              local.get $number
+              call $push
+              local.set $tos
+            end
+          else
+            drop
+            local.get $wordAddr
+            local.get $wordLen
+            call $failUndefinedWord
+          end
+        end
+        br $label2
+      end $label2
+    end $label0
+    local.get $tos
+  )
+  (func $execute (;8;) (param $tos (;0;) i32) (param $xt (;1;) i32) (result i32)
+    (local $body i32)
+    local.get $xt
+    call $body
+    local.set $body
+    local.get $xt
+    i32.const 4
+    i32.add
+    i32.load8_u
+    i32.const 64
+    i32.and
+    if (result i32)
+      local.get $tos
+      local.get $body
+      i32.const 4
+      i32.add
+      local.get $body
+      i32.load
+      call_indirect (param i32 i32) (result i32)
+    else
+      local.get $tos
+      local.get $body
+      i32.load
+      call_indirect (param i32) (result i32)
+    end
+  )
+  (func $quit (;9;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.set $tos
+    i32.const 8192
+    global.set $tors
+    i32.const 0
+    global.set $sourceID
+    i32.const 133536
+    i32.const 0
+    i32.store
+    unreachable
+  )
+  (func $semiCODE (;10;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $semicolon
+  )
+  (func $:NONAME (;11;) (param $tos (;0;) i32) (result i32)
+    i32.const 0
+    i32.const 0
+    i32.const 0
+    global.get $nextTableIndex
+    call $create
+    i32.const 0
+    call $startColon
+    i32.const 0
+    call $emitGetLocal
+    local.get $tos
+    global.get $latest
+    call $push
+    call $right-bracket
+  )
+  (func $! (;12;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.store
+    local.get $bbtos
+  )
+  (func $?DO (;13;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 1
+    call $compileDo
+  )
+  (func $.p (;14;) (param $tos (;0;) i32) (result i32)
+    i32.const 41
+    call $parse
+    call $type
+    local.get $tos
+  )
+  (func $# (;15;) (param $tos (;0;) i32) (result i32)
+    (local $v i64)
+    (local $base i64)
+    (local $bbtos i32)
+    (local $m i64)
+    (local $npo i32)
+    i32.const 132108
+    i32.load
+    i64.extend_i32_u
+    local.set $base
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i64.load
+    local.set $v
+    local.get $v
+    local.get $base
+    i64.rem_u
+    local.set $m
+    local.get $v
+    local.get $base
+    i64.div_u
+    local.set $v
+    global.get $po
+    i32.const 1
+    i32.sub
+    local.tee $npo
+    local.get $m
+    i32.wrap_i64
+    call $numberToChar
+    i32.store8
+    local.get $bbtos
+    local.get $v
+    i64.store
+    local.get $npo
+    global.set $po
+    local.get $tos
+  )
+  (func $#> (;16;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    global.get $po
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.sub
+    global.get $here
+    i32.const 512
+    i32.add
+    global.get $po
+    i32.sub
+    i32.store
+    local.get $tos
+  )
+  (func $#S (;17;) (param $tos (;0;) i32) (result i32)
+    (local $v i64)
+    (local $base i64)
+    (local $bbtos i32)
+    (local $m i64)
+    (local $po i32)
+    i32.const 132108
+    i32.load
+    i64.extend_i32_u
+    local.set $base
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i64.load
+    local.set $v
+    global.get $po
+    local.set $po
+    loop $label0
+      local.get $v
+      local.get $base
+      i64.rem_u
+      local.set $m
+      local.get $v
+      local.get $base
+      i64.div_u
+      local.set $v
+      local.get $po
+      i32.const 1
+      i32.sub
+      local.tee $po
+      local.get $m
+      i32.wrap_i64
+      call $numberToChar
+      i32.store8
+      local.get $v
+      i32.wrap_i64
+      br_if $label0
+    end $label0
+    local.get $bbtos
+    local.get $v
+    i64.store
+    local.get $po
+    global.set $po
+    local.get $tos
+  )
+  (func $' (;18;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $parseName
+    call $find!
+    drop
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $paren (;19;) (param $tos (;0;) i32) (result i32)
+    i32.const 41
+    call $parse
+    drop
+    drop
+    local.get $tos
+  )
+  (func $* (;20;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.get $bbtos
+    i32.load
+    i32.mul
+    i32.store
+    local.get $btos
+  )
+  (func $*/ (;21;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    (local $bbbtos i32)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    local.get $bbbtos
+    i32.load
+    i64.extend_i32_s
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i64.extend_i32_s
+    i64.mul
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i64.extend_i32_s
+    i64.div_s
+    i32.wrap_i64
+    i32.store
+    local.get $bbtos
+  )
+  (func $*/MOD (;22;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $bbbtos i32)
+    (local $x1 i64)
+    (local $x2 i64)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    local.get $bbbtos
+    i32.load
+    i64.extend_i32_s
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i64.extend_i32_s
+    i64.mul
+    local.tee $x1
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i64.extend_i32_s
+    local.tee $x2
+    i64.rem_s
+    i32.wrap_i64
+    i32.store
+    local.get $bbtos
+    local.get $x1
+    local.get $x2
+    i64.div_s
+    i32.wrap_i64
+    i32.store
+    local.get $btos
+  )
+  (func $+ (;23;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.get $bbtos
+    i32.load
+    i32.add
+    i32.store
+    local.get $btos
+  )
+  (func $+! (;24;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.tee $addr
+    local.get $addr
+    i32.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.add
+    i32.store
+    local.get $bbtos
+  )
+  (func $+LOOP (;25;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compilePlusLoop
+  )
+  (func $comma (;26;) (param $tos (;0;) i32) (result i32)
+    global.get $here
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    global.get $here
+    i32.const 4
+    i32.add
+    global.set $here
+    local.get $tos
+    i32.const 4
+    i32.sub
+  )
+  (func $- (;27;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.sub
+    i32.store
+    local.get $btos
+  )
+  (func $. (;28;) (param $tos (;0;) i32) (result i32)
+    (local $v i32)
+    local.get $tos
+    call $pop
+    local.set $v
+    local.get $v
+    i32.const 0
+    i32.lt_s
+    if
+      i32.const 45
+      call $shell_emit
+      i32.const 0
+      local.get $v
+      i32.sub
+      local.set $v
+    end
+    local.get $v
+    i32.const 132108
+    i32.load
+    call $U._
+    i32.const 32
+    call $shell_emit
+  )
+  (func $.q (;29;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $Sq
+    i32.const 0
+    i32.const 176
+    call $compileCall
+  )
+  (func $.S (;30;) (param $tos (;0;) i32) (result i32)
+    (local $p i32)
+    i32.const 65536
+    local.set $p
+    block $label0
+      loop $label1
+        local.get $p
+        local.get $tos
+        i32.ge_u
+        br_if $label0
+        local.get $p
+        i32.load
+        i32.const 132108
+        i32.load
+        call $U._
+        i32.const 32
+        call $shell_emit
+        local.get $p
+        i32.const 4
+        i32.add
+        local.set $p
+        br $label1
+      end $label1
+    end $label0
+    local.get $tos
+  )
+  (func $/ (;31;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $divisor i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $divisor
+    i32.eqz
+    if
+      i32.const 131087
+      call $fail
+    end
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.get $divisor
+    i32.div_s
+    i32.store
+    local.get $btos
+  )
+  (func $/MOD (;32;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $n1 i32)
+    (local $n2 i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.tee $n1
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $n2
+    i32.rem_s
+    i32.store
+    local.get $btos
+    local.get $n1
+    local.get $n2
+    i32.div_s
+    i32.store
+    local.get $tos
+  )
+  (func $<> (;33;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.eq
+    if
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    else
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $$Scomma (;34;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    global.get $cp
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    call $leb128
+    global.set $cp
+    local.get $btos
+  )
+  (func $$Ucomma (;35;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    global.get $cp
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    call $leb128u
+    global.set $cp
+    local.get $btos
+  )
+  (func $0< (;36;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.const 0
+    i32.lt_s
+    if
+      local.get $btos
+      i32.const -1
+      i32.store
+    else
+      local.get $btos
+      i32.const 0
+      i32.store
+    end
+    local.get $tos
+  )
+  (func $0<> (;37;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    if
+      local.get $btos
+      i32.const -1
+      i32.store
+    else
+      local.get $btos
+      i32.const 0
+      i32.store
+    end
+    local.get $tos
+  )
+  (func $0= (;38;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.eqz
+    if
+      local.get $btos
+      i32.const -1
+      i32.store
+    else
+      local.get $btos
+      i32.const 0
+      i32.store
+    end
+    local.get $tos
+  )
+  (func $0> (;39;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.const 0
+    i32.gt_s
+    if
+      local.get $btos
+      i32.const -1
+      i32.store
+    else
+      local.get $btos
+      i32.const 0
+      i32.store
+    end
+    local.get $tos
+  )
+  (func $1+ (;40;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 1
+    i32.add
+    i32.store
+    local.get $tos
+  )
+  (func $1- (;41;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 1
+    i32.sub
+    i32.store
+    local.get $tos
+  )
+  (func $2! (;42;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $SWAP
+    call $OVER
+    call $!
+    call $CELL+
+    call $!
+  )
+  (func $2* (;43;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 1
+    i32.shl
+    i32.store
+    local.get $tos
+  )
+  (func $2/ (;44;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 1
+    i32.shr_s
+    i32.store
+    local.get $tos
+  )
+  (func $2@ (;45;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $DUP
+    call $CELL+
+    call $@
+    call $SWAP
+    call $@
+  )
+  (func $2>R (;46;) (param $tos (;0;) i32) (result i32)
+    global.get $tors
+    i32.const 4
+    i32.add
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    global.get $tors
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $tos
+    i32.load
+    i32.store
+    global.get $tors
+    i32.const 8
+    i32.add
+    global.set $tors
+    local.get $tos
+  )
+  (func $2DROP (;47;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+  )
+  (func $2DUP (;48;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $2OVER (;49;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    local.get $tos
+    i32.const 16
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.get $tos
+    i32.const 12
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $2R@ (;50;) (param $tos (;0;) i32) (result i32)
+    (local $bbtors i32)
+    local.get $tos
+    global.get $tors
+    i32.const 8
+    i32.sub
+    local.tee $bbtors
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.get $bbtors
+    i32.const 4
+    i32.add
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $2R> (;51;) (param $tos (;0;) i32) (result i32)
+    (local $bbtors i32)
+    local.get $tos
+    global.get $tors
+    i32.const 8
+    i32.sub
+    local.tee $bbtors
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.get $bbtors
+    i32.const 4
+    i32.add
+    i32.load
+    i32.store
+    local.get $bbtors
+    global.set $tors
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $2SWAP (;52;) (param $tos (;0;) i32) (result i32)
+    (local $x1 i32)
+    (local $x2 i32)
+    local.get $tos
+    i32.const 16
+    i32.sub
+    i32.load
+    local.set $x1
+    local.get $tos
+    i32.const 12
+    i32.sub
+    i32.load
+    local.set $x2
+    local.get $tos
+    i32.const 16
+    i32.sub
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $x1
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.get $x2
+    i32.store
+    local.get $tos
+  )
+  (func $: (;53;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $startCode
+    i32.const 0
+    call $emitGetLocal
+  )
+  (func $semicolon (;54;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $endColon
+    global.get $latest
+    i32.const 4
+    i32.add
+    global.get $latest
+    i32.const 4
+    i32.add
+    i32.load
+    i32.const -33
+    i32.and
+    i32.store
+    call $left-bracket
+  )
+  (func $< (;55;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.lt_s
+    if
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    else
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $<# (;56;) (param $tos (;0;) i32) (result i32)
+    global.get $here
+    i32.const 512
+    i32.add
+    global.set $po
+    local.get $tos
+  )
+  (func $= (;57;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.eq
+    if
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    else
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $> (;58;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.gt_s
+    if
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    else
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $>BODY (;59;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    call $body
+    i32.const 4
+    i32.add
+    i32.store
+    local.get $tos
+  )
+  (func $>NUMBER (;60;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $bbbbtos i32)
+    (local $value i64)
+    (local $rest i32)
+    (local $restcount i32)
+    local.get $tos
+    i32.const 16
+    i32.sub
+    local.tee $bbbbtos
+    i64.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    call $number
+    local.set $restcount
+    local.set $rest
+    local.set $value
+    local.get $btos
+    local.get $restcount
+    i32.store
+    local.get $bbtos
+    local.get $rest
+    i32.store
+    local.get $bbbbtos
+    local.get $value
+    i64.store
+    local.get $tos
+  )
+  (func $>R (;61;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $tos
+    global.get $tors
+    local.get $tos
+    i32.load
+    i32.store
+    global.get $tors
+    i32.const 4
+    i32.add
+    global.set $tors
+  )
+  (func $?DUP (;62;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    if (result i32)
+      local.get $tos
+      local.get $btos
+      i32.load
+      i32.store
+      local.get $tos
+      i32.const 4
+      i32.add
+    else
+      local.get $tos
+    end
+  )
+  (func $@ (;63;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.load
+    i32.store
+    local.get $tos
+  )
+  (func $ABORT (;64;) (param $tos (;0;) i32) (result i32)
+    i32.const 3
+    global.set $error
+    i32.const 65536
+    call $quit
+  )
+  (func $ABORTq (;65;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $compileIf
+    call $Sq
+    i32.const 0
+    i32.const 176
+    call $compileCall
+    i32.const 0
+    i32.const 70
+    call $compileCall
+    call $compileThen
+  )
+  (func $ABS (;66;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $v i32)
+    (local $y i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    local.tee $v
+    local.get $v
+    i32.const 31
+    i32.shr_s
+    local.tee $y
+    i32.xor
+    local.get $y
+    i32.sub
+    i32.store
+    local.get $tos
+  )
+  (func $ACCEPT (;67;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $addr i32)
+    (local $p i32)
+    (local $endp i32)
+    (local $c i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.tee $addr
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.add
+    local.set $endp
+    local.get $addr
+    local.set $p
+    block $label0
+      loop $label1
+        call $shell_key
+        local.tee $c
+        i32.const 10
+        i32.eq
+        br_if $label0
+        local.get $p
+        local.get $c
+        i32.store8
+        local.get $p
+        i32.const 1
+        i32.add
+        local.set $p
+        local.get $c
+        call $shell_emit
+        local.get $p
+        local.get $endp
+        i32.lt_u
+        br_if $label1
+      end $label1
+    end $label0
+    local.get $bbtos
+    local.get $p
+    local.get $addr
+    i32.sub
+    i32.store
+    local.get $btos
+  )
+  (func $ACTION-OF (;68;) (param $tos (;0;) i32) (result i32)
+    (local $xtp i32)
+    (local $btos i32)
+    call $parseName
+    call $find!
+    drop
+    call $body
+    i32.const 4
+    i32.add
+    local.set $xtp
+    i32.const 133536
+    i32.load
+    i32.eqz
+    if (result i32)
+      local.get $tos
+      local.get $xtp
+      i32.load
+      call $push
+    else
+      local.get $xtp
+      call $emitConst
+      call $emitLoad
+      call $compilePush
+      local.get $tos
+    end
+  )
+  (func $ALIGN (;69;) (param $tos (;0;) i32) (result i32)
+    global.get $here
+    call $aligned
+    global.set $here
+    local.get $tos
+  )
+  (func $ALIGNED (;70;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    call $aligned
+    i32.store
+    local.get $tos
+  )
+  (func $ALLOT (;71;) (param $tos (;0;) i32) (result i32)
+    (local $v i32)
+    local.get $tos
+    call $pop
+    local.set $v
+    global.get $here
+    local.get $v
+    i32.add
+    global.set $here
+  )
+  (func $AND (;72;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.get $bbtos
+    i32.load
+    i32.and
+    i32.store
+    local.get $btos
+  )
+  (func $BEGIN (;73;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileBegin
+  )
+  (func $BL (;74;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 32
+    call $push
+  )
+  (func $BUFFER: (;75;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $CREATE
+    call $ALLOT
+  )
+  (func $BYE (;76;) (param $tos (;0;) i32) (result i32)
+    i32.const 5
+    global.set $error
+    local.get $tos
+    call $quit
+  )
+  (func $C! (;77;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.store8
+    local.get $bbtos
+  )
+  (func $Cc (;78;) (param $tos (;0;) i32) (result i32)
+    global.get $here
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store8
+    global.get $here
+    i32.const 1
+    i32.add
+    global.set $here
+    local.get $tos
+    i32.const 4
+    i32.sub
+  )
+  (func $Cq (;79;) (param $tos (;0;) i32) (result i32)
+    (local $c i32)
+    (local $addr i32)
+    (local $len i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 34
+    call $parse
+    local.set $len
+    local.set $addr
+    global.get $here
+    local.get $len
+    i32.store8
+    global.get $here
+    i32.const 1
+    i32.add
+    local.get $addr
+    local.get $len
+    memory.copy
+    global.get $here
+    call $compilePushConst
+    global.get $here
+    i32.const 1
+    i32.add
+    local.get $len
+    i32.add
+    call $aligned
+    global.set $here
+  )
+  (func $C@ (;80;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.load8_u
+    i32.store
+    local.get $tos
+  )
+  (func $CELL+ (;81;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 4
+    i32.add
+    i32.store
+    local.get $tos
+  )
+  (func $CELLS (;82;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const 2
+    i32.shl
+    i32.store
+    local.get $tos
+  )
+  (func $CHAR (;83;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $len i32)
+    call $parseName
+    local.set $len
+    local.set $addr
+    local.get $len
+    i32.eqz
+    if
+      i32.const 131101
+      call $fail
+    end
+    local.get $tos
+    local.get $addr
+    i32.load8_u
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $CHAR+ (;84;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $1+
+  )
+  (func $CHARS (;85;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+  )
+  (func $CODE (;86;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $startCode
+  )
+  (func $COMPILEComma (;87;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $pop
+    call $compileExecute
+  )
+  (func $CONSTANT (;88;) (param $tos (;0;) i32) (result i32)
+    (local $v i32)
+    local.get $tos
+    call $CREATE
+    global.get $here
+    i32.const 4
+    i32.sub
+    i32.const 6
+    i32.store
+    call $pop
+    local.set $v
+    global.get $here
+    local.get $v
+    i32.store
+    global.get $here
+    i32.const 4
+    i32.add
+    global.set $here
+  )
+  (func $COUNT (;89;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $addr i32)
+    local.get $tos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $addr
+    i32.load8_u
+    i32.store
+    local.get $btos
+    local.get $addr
+    i32.const 1
+    i32.add
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $CR (;90;) (param $tos (;0;) i32) (result i32)
+    i32.const 10
+    call $shell_emit
+    local.get $tos
+  )
+  (func $CREATE (;91;) (param $tos (;0;) i32) (result i32)
+    (local $nameAddr i32)
+    (local $nameLen i32)
+    call $parseName
+    local.set $nameLen
+    local.set $nameAddr
+    local.get $nameLen
+    i32.eqz
+    if
+      i32.const 131101
+      call $fail
+    end
+    local.get $nameAddr
+    local.get $nameLen
+    i32.const 64
+    i32.const 3
+    call $create
+    local.get $tos
+  )
+  (func $DECIMAL (;92;) (param $tos (;0;) i32) (result i32)
+    i32.const 132108
+    i32.const 10
+    i32.store
+    local.get $tos
+  )
+  (func $DEFER (;93;) (param $tos (;0;) i32) (result i32)
+    (local $nameAddr i32)
+    (local $nameLen i32)
+    call $parseName
+    local.set $nameLen
+    local.set $nameAddr
+    local.get $nameLen
+    i32.eqz
+    if
+      i32.const 131101
+      call $fail
+    end
+    local.get $nameAddr
+    local.get $nameLen
+    i32.const 64
+    i32.const 8
+    call $create
+    global.get $here
+    i32.const 4
+    i32.add
+    global.set $here
+    local.get $tos
+  )
+  (func $DEFER! (;94;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    call $body
+    i32.const 4
+    i32.add
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.store
+    local.get $bbtos
+  )
+  (func $DEFER@ (;95;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    call $body
+    i32.const 4
+    i32.add
+    i32.load
+    i32.store
+    local.get $tos
+  )
+  (func $DEPTH (;96;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    local.get $tos
+    i32.const 65536
+    i32.sub
+    i32.const 2
+    i32.shr_u
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $DO (;97;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 0
+    call $compileDo
+  )
+  (func $DOES> (;98;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    global.get $nextTableIndex
+    i32.const 1
+    i32.add
+    call $emitConst
+    i32.const 1
+    i32.const 4
+    call $compileCall
+    call $endColon
+    i32.const 1
+    call $startColon
+    i32.const 0
+    call $emitGetLocal
+    i32.const 1
+    call $compilePushLocal
+  )
+  (func $DROP (;99;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+  )
+  (func $DUP (;100;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $ELSE (;101;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $emitElse
+  )
+  (func $EMIT (;102;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    call $shell_emit
+    local.get $tos
+    i32.const 4
+    i32.sub
+  )
+  (func $ENVIRONMENT? (;103;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $len i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.set $addr
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.set $len
+    local.get $addr
+    local.get $len
+    i32.const 131172
+    i32.const 17
+    call $stringEqual
+    if (result i32)
+      local.get $bbtos
+      i32.const 8
+      i32.store
+      local.get $btos
+      i32.const -1
+      i32.store
+      local.get $tos
+    else
+      local.get $addr
+      local.get $len
+      i32.const 131190
+      i32.const 15
+      call $stringEqual
+      if (result i32)
+        local.get $bbtos
+        i32.const 255
+        i32.store
+        local.get $btos
+        i32.const -1
+        i32.store
+        local.get $tos
+      else
+        local.get $bbtos
+        i32.const 0
+        i32.store
+        local.get $btos
+      end
+    end
+  )
+  (func $ERASE (;104;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.const 0
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    memory.fill
+    local.get $bbtos
+  )
+  (func $EVALUATE (;105;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    (local $prevSourceID i32)
+    (local $prevIn i32)
+    (local $prevInputBufferBase i32)
+    (local $prevInputBufferSize i32)
+    global.get $sourceID
+    local.set $prevSourceID
+    i32.const 131892
+    i32.load
+    local.set $prevIn
+    global.get $inputBufferSize
+    local.set $prevInputBufferSize
+    global.get $inputBufferBase
+    local.set $prevInputBufferBase
+    i32.const -1
+    global.set $sourceID
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    global.set $inputBufferBase
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    global.set $inputBufferSize
+    i32.const 131892
+    i32.const 0
+    i32.store
+    local.get $bbtos
+    call $interpret
+    local.get $prevSourceID
+    global.set $sourceID
+    i32.const 131892
+    local.get $prevIn
+    i32.store
+    local.get $prevInputBufferBase
+    global.set $inputBufferBase
+    local.get $prevInputBufferSize
+    global.set $inputBufferSize
+  )
+  (func $EXECUTE (;106;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $pop
+    call $execute
+  )
+  (func $EXIT (;107;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $emitReturn
+  )
+  (func $FALSE (;108;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 0
+    call $push
+  )
+  (func $FILL (;109;) (param $tos (;0;) i32) (result i32)
+    (local $bbbtos i32)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    memory.fill
+    local.get $bbbtos
+  )
+  (func $FIND (;110;) (param $tos (;0;) i32) (result i32)
+    (local $caddr i32)
+    (local $xt i32)
+    (local $r i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.tee $caddr
+    i32.const 1
+    i32.add
+    local.get $caddr
+    i32.load8_u
+    call $find
+    local.set $r
+    local.set $xt
+    local.get $r
+    i32.eqz
+    if
+      local.get $tos
+      i32.const 4
+      i32.sub
+      local.get $caddr
+      i32.store
+    else
+      local.get $tos
+      i32.const 4
+      i32.sub
+      local.get $xt
+      i32.store
+    end
+    local.get $tos
+    local.get $r
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $FM/MOD (;111;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbbtos i32)
+    (local $n1 i64)
+    (local $n2 i64)
+    (local $n2_32 i32)
+    (local $q i32)
+    (local $mod i32)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    i64.load
+    local.tee $n1
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $n2_32
+    i64.extend_i32_s
+    local.tee $n2
+    i64.rem_s
+    i32.wrap_i64
+    local.set $mod
+    local.get $n1
+    local.get $n2
+    i64.div_s
+    i32.wrap_i64
+    local.set $q
+    block $label0
+      local.get $mod
+      i32.eqz
+      br_if $label0
+      local.get $n1
+      local.get $n2
+      i64.xor
+      i64.const 0
+      i64.ge_s
+      br_if $label0
+      local.get $q
+      i32.const 1
+      i32.sub
+      local.set $q
+      local.get $mod
+      local.get $n2_32
+      i32.add
+      local.set $mod
+    end $label0
+    local.get $bbbtos
+    local.get $mod
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $q
+    i32.store
+    local.get $btos
+  )
+  (func $HERE (;112;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $here
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $HEX (;113;) (param $tos (;0;) i32) (result i32)
+    i32.const 132108
+    i32.const 16
+    i32.store
+    local.get $tos
+  )
+  (func $HOLD (;114;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $npo i32)
+    global.get $po
+    i32.const 1
+    i32.sub
+    local.tee $npo
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.store8
+    local.get $npo
+    global.set $po
+    local.get $btos
+  )
+  (func $HOLDS (;115;) (param $tos (;0;) i32) (result i32)
+    (local $len i32)
+    (local $npo i32)
+    global.get $po
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.tee $len
+    i32.sub
+    local.tee $npo
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    local.get $len
+    memory.copy
+    local.get $npo
+    global.set $po
+    local.get $tos
+    i32.const 8
+    i32.sub
+  )
+  (func $I (;116;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $tors
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $IF (;117;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileIf
+  )
+  (func $IMMEDIATE (;118;) (param $tos (;0;) i32) (result i32)
+    global.get $latest
+    i32.const 4
+    i32.add
+    global.get $latest
+    i32.const 4
+    i32.add
+    i32.load
+    i32.const 128
+    i32.or
+    i32.store
+    local.get $tos
+  )
+  (func $INVERT (;119;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i32.const -1
+    i32.xor
+    i32.store
+    local.get $tos
+  )
+  (func $IS (;120;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $to
+  )
+  (func $J (;121;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $tors
+    i32.const 8
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $KEY (;122;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $shell_key
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $LATEST (;123;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $latest
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $LEAVE (;124;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileLeave
+  )
+  (func $LITERAL (;125;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $pop
+    call $compilePushConst
+  )
+  (func $LOOP (;126;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileLoop
+  )
+  (func $LSHIFT (;127;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.shl
+    i32.store
+    local.get $btos
+  )
+  (func $M* (;128;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    i64.extend_i32_s
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i64.extend_i32_s
+    i64.mul
+    i64.store
+    local.get $tos
+  )
+  (func $MARKER (;129;) (param $tos (;0;) i32) (result i32)
+    (local $nameAddr i32)
+    (local $nameLen i32)
+    (local $oldHere i32)
+    (local $oldLatest i32)
+    call $parseName
+    local.set $nameLen
+    local.set $nameAddr
+    local.get $nameLen
+    i32.eqz
+    if
+      i32.const 131101
+      call $fail
+    end
+    global.get $here
+    local.set $oldHere
+    global.get $latest
+    local.set $oldLatest
+    local.get $nameAddr
+    local.get $nameLen
+    i32.const 64
+    i32.const 7
+    call $create
+    global.get $here
+    local.get $oldHere
+    i32.store
+    global.get $here
+    i32.const 4
+    i32.add
+    local.get $oldLatest
+    i32.store
+    global.get $here
+    i32.const 8
+    i32.add
+    global.set $here
+    local.get $tos
+  )
+  (func $MAX (;130;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $v i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $v
+    i32.lt_s
+    if
+      local.get $bbtos
+      local.get $v
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $MIN (;131;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $v i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.tee $v
+    i32.gt_s
+    if
+      local.get $bbtos
+      local.get $v
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $MOD (;132;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.rem_s
+    i32.store
+    local.get $btos
+  )
+  (func $MOVE (;133;) (param $tos (;0;) i32) (result i32)
+    (local $bbbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    memory.copy
+    local.get $bbbtos
+  )
+  (func $NEGATE (;134;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.const 0
+    local.get $btos
+    i32.load
+    i32.sub
+    i32.store
+    local.get $tos
+  )
+  (func $NIP (;135;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.store
+    local.get $btos
+  )
+  (func $OR (;136;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.get $bbtos
+    i32.load
+    i32.or
+    i32.store
+    local.get $btos
+  )
+  (func $OVER (;137;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $PAD (;138;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $here
+    i32.const 772
+    i32.add
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $PARSE (;139;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $len i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    call $parse
+    local.set $len
+    local.set $addr
+    local.get $btos
+    local.get $addr
+    i32.store
+    local.get $tos
+    local.get $len
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $PARSE-NAME (;140;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $len i32)
+    call $parseName
+    local.set $len
+    local.set $addr
+    local.get $tos
+    local.get $addr
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.get $len
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $PICK (;141;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $tos
+    local.get $btos
+    i32.load
+    i32.const 2
+    i32.add
+    i32.const 2
+    i32.shl
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+  )
+  (func $POSTPONE (;142;) (param $tos (;0;) i32) (result i32)
+    (local $findToken i32)
+    (local $findResult i32)
+    local.get $tos
+    call $ensureCompiling
+    call $parseName
+    call $find!
+    local.set $findResult
+    local.set $findToken
+    local.get $findResult
+    i32.const 1
+    i32.eq
+    if (param i32) (result i32)
+      local.get $findToken
+      call $compileExecute
+    else
+      local.get $findToken
+      call $emitConst
+      i32.const 1
+      i32.const 5
+      call $compileCall
+    end
+  )
+  (func $QUIT (;143;) (param $tos (;0;) i32) (result i32)
+    i32.const 2
+    global.set $error
+    local.get $tos
+    call $quit
+  )
+  (func $R> (;144;) (param $tos (;0;) i32) (result i32)
+    global.get $tors
+    i32.const 4
+    i32.sub
+    global.set $tors
+    local.get $tos
+    global.get $tors
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $R@ (;145;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $tors
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $RANDOM (;146;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $shell_random
+    call $push
+  )
+  (func $RECURSE (;147;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileRecurse
+  )
+  (func $REFILL (;148;) (param $tos (;0;) i32) (result i32)
+    (local $char i32)
+    i32.const 0
+    global.set $inputBufferSize
+    i32.const 131892
+    i32.const 0
+    i32.store
+    local.get $tos
+    global.get $sourceID
+    i32.const -1
+    i32.eq
+    if (param i32) (result i32)
+      i32.const -1
+      call $push
+      return
+    end
+    i32.const 0
+    i32.const 4096
+    call $shell_read
+    global.set $inputBufferSize
+    global.get $inputBufferSize
+    i32.eqz
+    if (param i32) (result i32)
+      i32.const 0
+      call $push
+    else
+      i32.const -1
+      call $push
+    end
+  )
+  (func $REPEAT (;149;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileRepeat
+  )
+  (func $RESTORE-INPUT (;150;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    i32.const 131892
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.store
+    local.get $bbtos
+    i32.const 0
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.sub
+  )
+  (func $ROLL (;151;) (param $tos (;0;) i32) (result i32)
+    (local $u i32)
+    (local $x i32)
+    (local $p i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.set $u
+    local.get $btos
+    local.get $u
+    i32.const 1
+    i32.add
+    i32.const 2
+    i32.shl
+    i32.sub
+    local.tee $p
+    i32.load
+    local.set $x
+    local.get $p
+    local.get $p
+    i32.const 4
+    i32.add
+    local.get $u
+    i32.const 2
+    i32.shl
+    memory.copy
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $x
+    i32.store
+    local.get $btos
+  )
+  (func $ROT (;152;) (param $tos (;0;) i32) (result i32)
+    (local $tmp i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $bbbtos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.set $tmp
+    local.get $btos
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    i32.load
+    i32.store
+    local.get $bbbtos
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    i32.store
+    local.get $bbtos
+    local.get $tmp
+    i32.store
+    local.get $tos
+  )
+  (func $RSHIFT (;153;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.shr_u
+    i32.store
+    local.get $btos
+  )
+  (func $Sq (;154;) (param $tos (;0;) i32) (result i32)
+    (local $c i32)
+    (local $addr i32)
+    (local $len i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 34
+    call $parse
+    local.set $len
+    local.set $addr
+    global.get $here
+    local.get $addr
+    local.get $len
+    memory.copy
+    global.get $here
+    call $compilePushConst
+    local.get $len
+    call $compilePushConst
+    global.get $here
+    local.get $len
+    i32.add
+    call $aligned
+    global.set $here
+  )
+  (func $Seq (;155;) (param $tos (;0;) i32) (result i32)
+    (local $addr i32)
+    (local $p i32)
+    (local $tp i32)
+    (local $end i32)
+    (local $c i32)
+    (local $c2 i32)
+    (local $delimited i32)
+    local.get $tos
+    call $ensureCompiling
+    global.get $inputBufferBase
+    i32.const 131892
+    i32.load
+    i32.add
+    local.tee $addr
+    local.set $p
+    global.get $inputBufferBase
+    global.get $inputBufferSize
+    i32.add
+    local.set $end
+    global.get $here
+    local.set $tp
+    i32.const 0
+    local.set $delimited
+    block $label0
+      loop $label1
+        local.get $p
+        local.get $end
+        i32.eq
+        br_if $label0
+        local.get $p
+        i32.load8_s
+        local.set $c
+        local.get $p
+        i32.const 1
+        i32.add
+        local.set $p
+        local.get $c
+        i32.const 10
+        i32.eq
+        br_if $label0
+        local.get $c
+        i32.const 34
+        i32.eq
+        br_if $label0
+        local.get $c
+        i32.const 92
+        i32.eq
+        if
+          local.get $p
+          local.get $end
+          i32.eq
+          br_if $label0
+          local.get $p
+          i32.load8_s
+          local.set $c
+          local.get $p
+          i32.const 1
+          i32.add
+          local.set $p
+          local.get $c
+          i32.const 10
+          i32.eq
+          br_if $label0
+          local.get $c
+          i32.const 97
+          i32.eq
+          if
+            i32.const 7
+            local.set $c
+          else
+            local.get $c
+            i32.const 98
+            i32.eq
+            if
+              i32.const 8
+              local.set $c
+            else
+              local.get $c
+              i32.const 101
+              i32.eq
+              if
+                i32.const 27
+                local.set $c
+              else
+                local.get $c
+                i32.const 102
+                i32.eq
+                if
+                  i32.const 12
+                  local.set $c
+                else
+                  local.get $c
+                  i32.const 108
+                  i32.eq
+                  if
+                    i32.const 10
+                    local.set $c
+                  else
+                    local.get $c
+                    i32.const 110
+                    i32.eq
+                    if
+                      i32.const 10
+                      local.set $c
+                    else
+                      local.get $c
+                      i32.const 113
+                      i32.eq
+                      if
+                        i32.const 34
+                        local.set $c
+                      else
+                        local.get $c
+                        i32.const 114
+                        i32.eq
+                        if
+                          i32.const 13
+                          local.set $c
+                        else
+                          local.get $c
+                          i32.const 116
+                          i32.eq
+                          if
+                            i32.const 9
+                            local.set $c
+                          else
+                            local.get $c
+                            i32.const 118
+                            i32.eq
+                            if
+                              i32.const 11
+                              local.set $c
+                            else
+                              local.get $c
+                              i32.const 122
+                              i32.eq
+                              if
+                                i32.const 0
+                                local.set $c
+                              else
+                                local.get $c
+                                i32.const 34
+                                i32.eq
+                                if
+                                  i32.const 34
+                                  local.set $c
+                                else
+                                  local.get $c
+                                  i32.const 92
+                                  i32.eq
+                                  if
+                                    i32.const 92
+                                    local.set $c
+                                  else
+                                    local.get $c
+                                    i32.const 109
+                                    i32.eq
+                                    if
+                                      local.get $tp
+                                      i32.const 13
+                                      i32.store8
+                                      local.get $tp
+                                      i32.const 1
+                                      i32.add
+                                      local.set $tp
+                                      i32.const 10
+                                      local.set $c
+                                    else
+                                      local.get $c
+                                      i32.const 120
+                                      i32.eq
+                                      if
+                                        local.get $p
+                                        local.get $end
+                                        i32.eq
+                                        br_if $label0
+                                        local.get $p
+                                        i32.load8_s
+                                        local.set $c2
+                                        local.get $p
+                                        i32.const 1
+                                        i32.add
+                                        local.set $p
+                                        local.get $c2
+                                        i32.const 10
+                                        i32.eq
+                                        br_if $label0
+                                        local.get $p
+                                        local.get $end
+                                        i32.eq
+                                        br_if $label0
+                                        local.get $p
+                                        i32.load8_s
+                                        local.set $c
+                                        local.get $p
+                                        i32.const 1
+                                        i32.add
+                                        local.set $p
+                                        local.get $c
+                                        i32.const 10
+                                        i32.eq
+                                        br_if $label0
+                                        local.get $c
+                                        call $hexchar
+                                        local.get $c2
+                                        call $hexchar
+                                        i32.const 4
+                                        i32.shl
+                                        i32.or
+                                        local.set $c
+                                      end
+                                    end
+                                  end
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+          local.get $tp
+          local.get $c
+          i32.store8
+          local.get $tp
+          i32.const 1
+          i32.add
+          local.set $tp
+          br $label1
+        else
+          local.get $tp
+          local.get $c
+          i32.store8
+          local.get $tp
+          i32.const 1
+          i32.add
+          local.set $tp
+        end
+        br $label1
+      end $label1
+    end $label0
+    i32.const 131892
+    local.get $p
+    global.get $inputBufferBase
+    i32.sub
+    i32.store
+    global.get $here
+    call $compilePushConst
+    local.get $tp
+    global.get $here
+    i32.sub
+    call $compilePushConst
+    local.get $tp
+    call $aligned
+    global.set $here
+  )
+  (func $S>D (;156;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    local.get $btos
+    i32.load
+    i64.extend_i32_s
+    i64.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $SAVE-INPUT (;157;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 131892
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    i32.const 1
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.add
+  )
+  (func $SCALL (;158;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.set $tos
+    call $shell_call
+    global.get $tos
+  )
+  (func $SIGN (;159;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $npo i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.const 0
+    i32.lt_s
+    if
+      global.get $po
+      i32.const 1
+      i32.sub
+      local.tee $npo
+      i32.const 45
+      i32.store8
+      local.get $npo
+      global.set $po
+    end
+    local.get $btos
+  )
+  (func $SM/REM (;160;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbbtos i32)
+    (local $n1 i64)
+    (local $n2 i64)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    local.get $bbbtos
+    i64.load
+    local.tee $n1
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i64.extend_i32_s
+    local.tee $n2
+    i64.rem_s
+    i32.wrap_i64
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $n1
+    local.get $n2
+    i64.div_s
+    i32.wrap_i64
+    i32.store
+    local.get $btos
+  )
+  (func $SOURCE (;161;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $inputBufferBase
+    call $push
+    global.get $inputBufferSize
+    call $push
+  )
+  (func $SOURCE-ID (;162;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    global.get $sourceID
+    call $push
+  )
+  (func $SPACE (;163;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $BL
+    call $EMIT
+  )
+  (func $SPACES (;164;) (param $tos (;0;) i32) (result i32)
+    (local $i i32)
+    local.get $tos
+    call $pop
+    local.set $i
+    block $label0 (param i32) (result i32)
+      loop $label1 (param i32) (result i32)
+        local.get $i
+        i32.const 0
+        i32.le_s
+        br_if $label0
+        call $SPACE
+        local.get $i
+        i32.const 1
+        i32.sub
+        local.set $i
+        br $label1
+      end $label1
+    end $label0
+  )
+  (func $SWAP (;165;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    (local $tmp i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.set $tmp
+    local.get $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.store
+    local.get $btos
+    local.get $tmp
+    i32.store
+    local.get $tos
+  )
+  (func $THEN (;166;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileThen
+  )
+  (func $TO (;167;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $to
+  )
+  (func $TRUE (;168;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const -1
+    call $push
+  )
+  (func $TUCK (;169;) (param $tos (;0;) i32) (result i32)
+    (local $v i32)
+    local.get $tos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.tee $v
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.get $tos
+    i32.const 8
+    i32.sub
+    i32.load
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $v
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $TYPE (;170;) (param $tos (;0;) i32) (result i32)
+    (local $p i32)
+    (local $len i32)
+    local.get $tos
+    call $pop
+    local.set $len
+    call $pop
+    local.set $p
+    local.get $p
+    local.get $len
+    call $type
+  )
+  (func $U. (;171;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $pop
+    i32.const 132108
+    i32.load
+    call $U._
+    i32.const 32
+    call $shell_emit
+  )
+  (func $U< (;172;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.lt_u
+    if
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    else
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $U> (;173;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i32.gt_u
+    if
+      local.get $bbtos
+      i32.const -1
+      i32.store
+    else
+      local.get $bbtos
+      i32.const 0
+      i32.store
+    end
+    local.get $btos
+  )
+  (func $UM* (;174;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $bbtos
+    i32.load
+    i64.extend_i32_u
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i64.extend_i32_u
+    i64.mul
+    i64.store
+    local.get $tos
+  )
+  (func $UM/MOD (;175;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbbtos i32)
+    (local $n1 i64)
+    (local $n2 i64)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    local.get $bbbtos
+    i64.load
+    local.tee $n1
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    i64.extend_i32_u
+    local.tee $n2
+    i64.rem_u
+    i32.wrap_i64
+    i32.store
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.get $n1
+    local.get $n2
+    i64.div_u
+    i32.wrap_i64
+    i32.store
+    local.get $btos
+  )
+  (func $UNLOOP (;176;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 0
+    i32.const 9
+    call $compileCall
+  )
+  (func $UNTIL (;177;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileUntil
+  )
+  (func $UNUSED (;178;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 104857600
+    global.get $here
+    i32.sub
+    call $push
+  )
+  (func $VARIABLE (;179;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $CREATE
+    global.get $here
+    i32.const 4
+    i32.add
+    global.set $here
+  )
+  (func $WHILE (;180;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $compileWhile
+  )
+  (func $WITHIN (;181;) (param $tos (;0;) i32) (result i32)
+    (local $bbtos i32)
+    (local $bbbtos i32)
+    (local $min i32)
+    local.get $tos
+    i32.const 12
+    i32.sub
+    local.tee $bbbtos
+    local.get $bbbtos
+    i32.load
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    i32.load
+    local.tee $min
+    i32.sub
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    local.get $min
+    i32.sub
+    i32.lt_u
+    if (result i32)
+      i32.const -1
+    else
+      i32.const 0
+    end
+    i32.store
+    local.get $bbtos
+  )
+  (func $WORD (;182;) (param $tos (;0;) i32) (result i32)
+    (local $wordBase i32)
+    (local $addr i32)
+    (local $len i32)
+    (local $delimiter i32)
+    local.get $tos
+    call $pop
+    local.set $delimiter
+    local.get $delimiter
+    call $skip
+    local.get $delimiter
+    call $parse
+    local.set $len
+    local.set $addr
+    global.get $here
+    i32.const 512
+    i32.add
+    local.tee $wordBase
+    i32.const 1
+    i32.add
+    local.get $addr
+    local.get $len
+    memory.copy
+    local.get $wordBase
+    local.get $len
+    i32.store8
+    local.get $wordBase
+    call $push
+  )
+  (func $WORDS (;183;) (param $tos (;0;) i32) (result i32)
+    (local $entryP i32)
+    (local $entryLF i32)
+    (local $entryL i32)
+    (local $p i32)
+    (local $pe i32)
+    global.get $latest
+    local.set $entryP
+    loop $label0
+      local.get $entryP
+      i32.const 4
+      i32.add
+      i32.load
+      local.set $entryLF
+      local.get $entryLF
+      i32.const 32
+      i32.and
+      i32.eqz
+      if
+        local.get $entryP
+        i32.const 5
+        i32.add
+        local.get $entryLF
+        i32.const 31
+        i32.and
+        call $type
+        i32.const 32
+        call $shell_emit
+      end
+      local.get $entryP
+      i32.load
+      local.set $entryP
+      local.get $entryP
+      br_if $label0
+    end $label0
+    local.get $tos
+  )
+  (func $XOR (;184;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    (local $bbtos i32)
+    local.get $tos
+    i32.const 8
+    i32.sub
+    local.tee $bbtos
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    local.get $bbtos
+    i32.load
+    i32.xor
+    i32.store
+    local.get $btos
+  )
+  (func $left-bracket (;185;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    i32.const 133536
+    i32.const 0
+    i32.store
+  )
+  (func $bracket-tick (;186;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $'
+    call $pop
+    call $compilePushConst
+  )
+  (func $bracket-char (;187;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    call $ensureCompiling
+    call $CHAR
+    call $pop
+    call $compilePushConst
+  )
+  (func $\ (;188;) (param $tos (;0;) i32) (result i32)
+    i32.const 10
+    call $parse
+    drop
+    drop
+    local.get $tos
+  )
+  (func $right-bracket (;189;) (param $tos (;0;) i32) (result i32)
+    i32.const 133536
+    i32.const 1
+    i32.store
+    local.get $tos
+  )
+  (func $startCode (;190;) (param $tos (;0;) i32) (result i32)
+    (local $nameAddr i32)
+    (local $nameLen i32)
+    call $parseName
+    local.set $nameLen
+    local.set $nameAddr
+    local.get $nameLen
+    i32.eqz
+    if
+      i32.const 131101
+      call $fail
+    end
+    local.get $nameAddr
+    local.get $nameLen
+    i32.const 32
+    global.get $nextTableIndex
+    call $create
+    i32.const 0
+    call $startColon
+    local.get $tos
+    call $right-bracket
+  )
+  (func $startColon (;191;) (param $type (;0;) i32)
+    i32.const 4161
+    local.get $type
+    i32.store8
+    i32.const 4190
+    global.set $cp
+    local.get $type
+    i32.const 1
+    i32.add
+    global.set $firstTemporaryLocal
+    global.get $firstTemporaryLocal
+    global.set $currentLocal
+    global.get $currentLocal
+    global.set $lastLocal
+    i32.const 0
+    global.set $branchNesting
+    i32.const 0
+    global.set $lastEmitWasGetTOS
+  )
+  (func $endColon (;192;)
+    (local $bodySize i32)
+    (local $nameLength i32)
+    call $emitEnd
+    global.get $cp
+    i32.const 4096
+    i32.sub
+    local.set $bodySize
+    i32.const 4175
+    local.get $bodySize
+    i32.const 83
+    i32.sub
+    call $leb128-4p
+    i32.store
+    i32.const 4180
+    local.get $bodySize
+    i32.const 88
+    i32.sub
+    call $leb128-4p
+    i32.store
+    i32.const 4185
+    global.get $lastLocal
+    global.get $firstTemporaryLocal
+    i32.sub
+    i32.const 1
+    i32.add
+    call $leb128-4p
+    i32.store
+    i32.const 4167
+    global.get $nextTableIndex
+    call $leb128-4p
+    i32.store
+    i32.const 4140
+    global.get $nextTableIndex
+    i32.const 1
+    i32.add
+    call $leb128-4p
+    i32.store
+    global.get $latest
+    call $body
+    i32.load
+    global.get $nextTableIndex
+    i32.eq
+    if
+      global.get $latest
+      i32.const 4
+      i32.add
+      i32.load8_u
+      i32.const 31
+      i32.and
+      local.set $nameLength
+      global.get $cp
+      i32.const 0
+      i32.store8
+      global.get $cp
+      i32.const 1
+      i32.add
+      i32.const 13
+      i32.const 2
+      local.get $nameLength
+      i32.mul
+      i32.add
+      i32.store8
+      global.get $cp
+      i32.const 2
+      i32.add
+      i32.const 4
+      i32.store8
+      global.get $cp
+      i32.const 3
+      i32.add
+      i32.const 110
+      i32.store8
+      global.get $cp
+      i32.const 4
+      i32.add
+      i32.const 97
+      i32.store8
+      global.get $cp
+      i32.const 5
+      i32.add
+      i32.const 109
+      i32.store8
+      global.get $cp
+      i32.const 6
+      i32.add
+      i32.const 101
+      i32.store8
+      global.get $cp
+      i32.const 7
+      i32.add
+      global.set $cp
+      global.get $cp
+      i32.const 0
+      i32.store8
+      global.get $cp
+      i32.const 1
+      i32.add
+      i32.const 1
+      local.get $nameLength
+      i32.add
+      i32.store8
+      global.get $cp
+      i32.const 2
+      i32.add
+      local.get $nameLength
+      i32.store8
+      global.get $cp
+      i32.const 3
+      i32.add
+      global.set $cp
+      global.get $cp
+      global.get $latest
+      i32.const 5
+      i32.add
+      local.get $nameLength
+      memory.copy
+      global.get $cp
+      local.get $nameLength
+      i32.add
+      global.set $cp
+      global.get $cp
+      i32.const 1
+      i32.store8
+      global.get $cp
+      i32.const 1
+      i32.add
+      i32.const 3
+      local.get $nameLength
+      i32.add
+      i32.store8
+      global.get $cp
+      i32.const 2
+      i32.add
+      i32.const 1
+      i32.store8
+      global.get $cp
+      i32.const 3
+      i32.add
+      i32.const 0
+      i32.store8
+      global.get $cp
+      i32.const 4
+      i32.add
+      local.get $nameLength
+      i32.store8
+      global.get $cp
+      i32.const 5
+      i32.add
+      global.set $cp
+      global.get $cp
+      global.get $latest
+      i32.const 5
+      i32.add
+      local.get $nameLength
+      memory.copy
+      global.get $cp
+      local.get $nameLength
+      i32.add
+      global.set $cp
+    end
+    global.get $nextTableIndex
+    table.size $table
+    i32.ge_u
+    if
+      ref.func $!
+      table.size $table
+      table.grow $table
+      drop
+    end
+    i32.const 4096
+    global.get $cp
+    i32.const 4096
+    i32.sub
+    call $shell_load
+    global.get $nextTableIndex
+    i32.const 1
+    i32.add
+    global.set $nextTableIndex
+  )
+  (func $compilePushConst (;193;) (param $n (;0;) i32)
+    i32.const 0
+    call $emitSetLocal
+    i32.const 0
+    call $emitGetLocal
+    local.get $n
+    call $emitConst
+    call $compilePush
+  )
+  (func $compilePushLocal (;194;) (param $n (;0;) i32)
+    i32.const 0
+    call $emitSetLocal
+    i32.const 0
+    call $emitGetLocal
+    local.get $n
+    call $emitGetLocal
+    call $compilePush
+  )
+  (func $compilePush (;195;)
+    call $emitStore
+    i32.const 0
+    call $emitGetLocal
+    i32.const 4
+    call $emitConst
+    call $emitAdd
+  )
+  (func $compileIf (;196;)
+    call $compilePop
+    call $emitIf
+    global.get $branchNesting
+    i32.const 1
+    i32.add
+    global.set $branchNesting
+  )
+  (func $compileThen (;197;) (param $tos (;0;) i32) (result i32)
+    global.get $branchNesting
+    i32.const 1
+    i32.sub
+    global.set $branchNesting
+    call $emitEnd
+    local.get $tos
+    call $compileEndDests
+  )
+  (func $compileDo (;198;) (param $tos (;0;) i32) (param $cond (;1;) i32) (result i32)
+    local.get $tos
+    global.get $branchNesting
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+    local.set $tos
+    i32.const 0
+    global.set $branchNesting
+    global.get $currentLocal
+    i32.const 2
+    i32.add
+    global.set $currentLocal
+    global.get $currentLocal
+    global.get $lastLocal
+    i32.gt_s
+    if
+      global.get $currentLocal
+      global.set $lastLocal
+    end
+    call $compilePop
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitSetLocal
+    call $compilePop
+    global.get $currentLocal
+    call $emitSetLocal
+    call $emitBlock
+    local.get $cond
+    if
+      global.get $currentLocal
+      i32.const 0
+      i32.sub
+      call $emitGetLocal
+      global.get $currentLocal
+      i32.const 1
+      i32.sub
+      call $emitGetLocal
+      call $emitEqual
+      i32.const 0
+      call $emitBrIf
+    end
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    i32.const 1
+    i32.const 1
+    call $compileCall
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    global.get $currentLocal
+    call $emitGetLocal
+    call $emitSub
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitSetLocal
+    call $emitLoop
+    local.get $tos
+  )
+  (func $compileLoop (;199;) (param $tos (;0;) i32) (result i32)
+    i32.const 1
+    call $emitConst
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    call $emitAdd
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitTeeLocal
+    global.get $currentLocal
+    call $emitGetLocal
+    call $emitAdd
+    i32.const 1
+    i32.const 2
+    call $compileCall
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    i32.const 0
+    call $emitConst
+    call $emitNotEqual
+    i32.const 0
+    call $emitBrIf
+    local.get $tos
+    call $compileLoopEnd
+  )
+  (func $compilePlusLoop (;200;) (param $tos (;0;) i32) (result i32)
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    global.get $firstTemporaryLocal
+    call $emitSetLocal
+    call $compilePop
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    call $emitAdd
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitTeeLocal
+    global.get $currentLocal
+    call $emitGetLocal
+    call $emitAdd
+    i32.const 1
+    i32.const 2
+    call $compileCall
+    global.get $currentLocal
+    i32.const 1
+    i32.sub
+    call $emitGetLocal
+    global.get $firstTemporaryLocal
+    call $emitGetLocal
+    call $emitXOR
+    i32.const 0
+    call $emitConst
+    call $emitGreaterEqualSigned
+    i32.const 0
+    call $emitBrIf
+    local.get $tos
+    call $compileLoopEnd
+  )
+  (func $compileLoopEnd (;201;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    i32.const 0
+    i32.const 9
+    call $compileCall
+    call $emitEnd
+    call $emitEnd
+    global.get $currentLocal
+    i32.const 2
+    i32.sub
+    global.set $currentLocal
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $btos
+    i32.load
+    global.set $branchNesting
+    local.get $btos
+  )
+  (func $compileLeave (;202;)
+    i32.const 0
+    i32.const 9
+    call $compileCall
+    global.get $branchNesting
+    i32.const 1
+    i32.add
+    call $emitBr
+  )
+  (func $compileBegin (;203;) (param $tos (;0;) i32) (result i32)
+    call $emitLoop
+    global.get $branchNesting
+    i32.const 1
+    i32.add
+    global.set $branchNesting
+    local.get $tos
+    global.get $branchNesting
+    i32.const -2147483648
+    i32.or
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $compileWhile (;204;)
+    call $compileIf
+  )
+  (func $compileRepeat (;205;) (param $tos (;0;) i32) (result i32)
+    global.get $branchNesting
+    local.get $tos
+    i32.const 4
+    i32.sub
+    i32.load
+    i32.const 2147483647
+    i32.and
+    i32.sub
+    call $emitBr
+    call $emitEnd
+    global.get $branchNesting
+    i32.const 1
+    i32.sub
+    global.set $branchNesting
+    local.get $tos
+    call $compileEndDests
+  )
+  (func $compileUntil (;206;) (param $tos (;0;) i32) (result i32)
+    call $compilePop
+    call $emitEqualsZero
+    i32.const 0
+    call $emitBrIf
+    local.get $tos
+    call $compileEndDests
+  )
+  (func $compileEndDests (;207;) (param $tos (;0;) i32) (result i32)
+    (local $btos i32)
+    block $label0
+      loop
+        local.get $tos
+        i32.const 65536
+        i32.le_u
+        br_if $label0
+        local.get $tos
+        i32.const 4
+        i32.sub
+        local.tee $btos
+        i32.load
+        global.get $branchNesting
+        i32.const -2147483648
+        i32.or
+        i32.ne
+        br_if $label0
+        call $emitEnd
+        global.get $branchNesting
+        i32.const 1
+        i32.sub
+        global.set $branchNesting
+        local.get $btos
+        local.set $tos
+      end
+    end $label0
+    local.get $tos
+  )
+  (func $compileRecurse (;208;)
+    global.get $cp
+    i32.const 16
+    i32.store8
+    global.get $cp
+    i32.const 1
+    i32.add
+    global.set $cp
+    global.get $cp
+    i32.const 0
+    i32.store8
+    global.get $cp
+    i32.const 1
+    i32.add
+    global.set $cp
+  )
+  (func $compilePop (;209;)
+    i32.const 4
+    call $emitConst
+    call $emitSub
+    i32.const 0
+    call $emitTeeLocal
+    i32.const 0
+    call $emitGetLocal
+    call $emitLoad
+  )
+  (func $compileExecute (;210;) (param $tos (;0;) i32) (param $xt (;1;) i32) (result i32)
+    (local $body i32)
+    local.get $xt
+    call $body
+    local.set $body
+    local.get $xt
+    i32.const 4
+    i32.add
+    i32.load
+    i32.const 64
+    i32.and
+    if
+      local.get $body
+      i32.const 4
+      i32.add
+      call $emitConst
+      i32.const 1
+      local.get $body
+      i32.load
+      call $compileCall
+    else
+      i32.const 0
+      local.get $body
+      i32.load
+      call $compileCall
+    end
+    local.get $tos
+  )
+  (func $compileCall (;211;) (param $type (;0;) i32) (param $n (;1;) i32)
+    local.get $n
+    call $emitConst
+    i32.const 17
+    local.get $type
+    i32.const 0
+    call $emit2
+  )
+  (func $emitBlock (;212;)
+    i32.const 2
+    i32.const 0
+    call $emit1
+  )
+  (func $emitLoop (;213;)
+    i32.const 3
+    i32.const 0
+    call $emit1
+  )
+  (func $emitConst (;214;) (param $n (;0;) i32)
+    i32.const 65
+    local.get $n
+    call $emit1v
+  )
+  (func $emitIf (;215;)
+    i32.const 4
+    i32.const 0
+    call $emit1
+  )
+  (func $emitElse (;216;)
+    i32.const 5
+    call $emit0
+  )
+  (func $emitEnd (;217;)
+    i32.const 11
+    call $emit0
+  )
+  (func $emitBr (;218;) (param $n (;0;) i32)
+    i32.const 12
+    local.get $n
+    call $emit1
+  )
+  (func $emitBrIf (;219;) (param $n (;0;) i32)
+    i32.const 13
+    local.get $n
+    call $emit1
+  )
+  (func $emitSetLocal (;220;) (param $n (;0;) i32)
+    i32.const 33
+    local.get $n
+    call $emit1
+    local.get $n
+    i32.eqz
+    global.set $lastEmitWasGetTOS
+  )
+  (func $emitGetLocal (;221;) (param $n (;0;) i32)
+    block $label0
+      local.get $n
+      br_if $label0
+      global.get $lastEmitWasGetTOS
+      i32.eqz
+      br_if $label0
+      global.get $cp
+      i32.const 2
+      i32.sub
+      i32.const 34
+      i32.store8
+      i32.const 0
+      global.set $lastEmitWasGetTOS
+      return
+    end $label0
+    i32.const 32
+    local.get $n
+    call $emit1
+  )
+  (func $emitTeeLocal (;222;) (param $n (;0;) i32)
+    i32.const 34
+    local.get $n
+    call $emit1
+  )
+  (func $emitAdd (;223;)
+    i32.const 106
+    call $emit0
+  )
+  (func $emitSub (;224;)
+    i32.const 107
+    call $emit0
+  )
+  (func $emitXOR (;225;)
+    i32.const 115
+    call $emit0
+  )
+  (func $emitEqualsZero (;226;)
+    i32.const 69
+    call $emit0
+  )
+  (func $emitEqual (;227;)
+    i32.const 70
+    call $emit0
+  )
+  (func $emitNotEqual (;228;)
+    i32.const 71
+    call $emit0
+  )
+  (func $emitGreaterEqualSigned (;229;)
+    i32.const 78
+    call $emit0
+  )
+  (func $emitLesserSigned (;230;)
+    i32.const 72
+    call $emit0
+  )
+  (func $emitReturn (;231;)
+    i32.const 15
+    call $emit0
+  )
+  (func $emitStore (;232;)
+    i32.const 54
+    i32.const 2
+    i32.const 0
+    call $emit2
+  )
+  (func $emitLoad (;233;)
+    i32.const 40
+    i32.const 2
+    i32.const 0
+    call $emit2
+  )
+  (func $emit0 (;234;) (param $op (;0;) i32)
+    global.get $cp
+    local.get $op
+    call $leb128u
+    global.set $cp
+    i32.const 0
+    global.set $lastEmitWasGetTOS
+  )
+  (func $emit1v (;235;) (param $op (;0;) i32) (param $i1 (;1;) i32)
+    global.get $cp
+    local.get $op
+    call $leb128u
+    global.set $cp
+    global.get $cp
+    local.get $i1
+    call $leb128
+    global.set $cp
+    i32.const 0
+    global.set $lastEmitWasGetTOS
+  )
+  (func $emit1 (;236;) (param $op (;0;) i32) (param $i1 (;1;) i32)
+    global.get $cp
+    local.get $op
+    call $leb128u
+    global.set $cp
+    global.get $cp
+    local.get $i1
+    call $leb128u
+    global.set $cp
+    i32.const 0
+    global.set $lastEmitWasGetTOS
+  )
+  (func $emit2 (;237;) (param $op (;0;) i32) (param $i1 (;1;) i32) (param $i2 (;2;) i32)
+    global.get $cp
+    local.get $op
+    call $leb128u
+    global.set $cp
+    global.get $cp
+    local.get $i1
+    call $leb128u
+    global.set $cp
+    global.get $cp
+    local.get $i2
+    call $leb128u
+    global.set $cp
+    i32.const 0
+    global.set $lastEmitWasGetTOS
+  )
+  (func $startDo (;238;) (param $tos (;0;) i32) (param $i (;1;) i32) (result i32)
+    global.get $tors
+    local.get $i
+    i32.store
+    global.get $tors
+    i32.const 4
+    i32.add
+    global.set $tors
+    local.get $tos
+  )
+  (func $endDo (;239;) (param $tos (;0;) i32) (result i32)
+    global.get $tors
+    i32.const 4
+    i32.sub
+    global.set $tors
+    local.get $tos
+  )
+  (func $updateDo (;240;) (param $tos (;0;) i32) (param $i (;1;) i32) (result i32)
+    global.get $tors
+    i32.const 4
+    i32.sub
+    local.get $i
+    i32.store
+    local.get $tos
+  )
+  (func $pushDataAddress (;241;) (param $tos (;0;) i32) (param $d (;1;) i32) (result i32)
+    local.get $tos
+    local.get $d
+    call $push
+  )
+  (func $setLatestBody (;242;) (param $tos (;0;) i32) (param $v (;1;) i32) (result i32)
+    local.get $tos
+    global.get $latest
+    call $body
+    local.get $v
+    i32.store
+  )
+  (func $pushIndirect (;243;) (param $tos (;0;) i32) (param $v (;1;) i32) (result i32)
+    local.get $tos
+    local.get $v
+    i32.load
+    call $push
+  )
+  (func $resetMarker (;244;) (param $tos (;0;) i32) (param $dp (;1;) i32) (result i32)
+    local.get $dp
+    i32.load
+    global.set $here
+    local.get $dp
+    i32.const 4
+    i32.add
+    i32.load
+    global.set $latest
+    local.get $tos
+  )
+  (func $executeDefer (;245;) (param $tos (;0;) i32) (param $dp (;1;) i32) (result i32)
+    local.get $tos
+    local.get $dp
+    i32.load
+    call $execute
+  )
+  (func $push (;246;) (param $tos (;0;) i32) (param $v (;1;) i32) (result i32)
+    local.get $tos
+    local.get $v
+    i32.store
+    local.get $tos
+    i32.const 4
+    i32.add
+  )
+  (func $pop (;247;) (param $tos (;0;) i32) (result i32) (result i32)
+    local.get $tos
+    i32.const 4
+    i32.sub
+    local.tee $tos
+    local.get $tos
+    i32.load
+  )
+  (func $stringEqual (;248;) (param $addr1 (;0;) i32) (param $len1 (;1;) i32) (param $addr2 (;2;) i32) (param $len2 (;3;) i32) (result i32)
+    (local $end1 i32)
+    (local $end2 i32)
+    local.get $len1
+    i32.eqz
+    if
+      i32.const 0
+      return
+    end
+    local.get $len1
+    local.get $len2
+    i32.ne
+    if
+      i32.const 0
+      return
+    end
+    local.get $addr1
+    local.get $len1
+    i32.add
+    local.set $end1
+    local.get $addr2
+    local.get $len2
+    i32.add
+    local.set $end2
+    loop $label0 (result i32)
+      local.get $addr1
+      local.get $end1
+      i32.eq
+      if
+        i32.const 1
+        return
+      end
+      local.get $addr1
+      i32.load8_s
+      local.get $addr2
+      i32.load8_s
+      i32.ne
+      if
+        i32.const 0
+        return
+      end
+      local.get $addr1
+      i32.const 1
+      i32.add
+      local.set $addr1
+      local.get $addr2
+      i32.const 1
+      i32.add
+      local.set $addr2
+      br $label0
+    end $label0
+  )
+  (func $fail (;249;) (param $str (;0;) i32)
+    local.get $str
+    i32.const 1
+    i32.add
+    local.get $str
+    i32.load8_u
+    call $type
+    i32.const 10
+    call $shell_emit
+    i32.const -1
+    call $ABORT
+    drop
+  )
+  (func $failUndefinedWord (;250;) (param $addr (;0;) i32) (param $len (;1;) i32)
+    i32.const 131073
+    i32.const 131072
+    i32.load8_u
+    call $type
+    i32.const 58
+    call $shell_emit
+    i32.const 32
+    call $shell_emit
+    local.get $addr
+    local.get $len
+    call $type
+    i32.const 10
+    call $shell_emit
+    i32.const -1
+    call $ABORT
+    drop
+  )
+  (func $create (;251;) (param $nameAddr (;0;) i32) (param $nameLen (;1;) i32) (param $flags (;2;) i32) (param $func (;3;) i32)
+    (local $here i32)
+    global.get $here
+    local.tee $here
+    global.get $latest
+    i32.store
+    local.get $here
+    global.set $latest
+    local.get $here
+    i32.const 4
+    i32.add
+    local.set $here
+    local.get $here
+    local.get $nameLen
+    local.get $flags
+    i32.or
+    i32.store8
+    local.get $here
+    i32.const 1
+    i32.add
+    local.tee $here
+    local.get $nameAddr
+    local.get $nameLen
+    memory.copy
+    local.get $here
+    local.get $nameLen
+    i32.add
+    call $aligned
+    local.set $here
+    local.get $here
+    local.get $func
+    i32.store
+    local.get $here
+    i32.const 4
+    i32.add
+    local.set $here
+    local.get $here
+    global.set $here
+  )
+  (func $type (;252;) (param $p (;0;) i32) (param $len (;1;) i32)
+    (local $end i32)
+    local.get $p
+    local.get $len
+    i32.add
+    local.set $end
+    block $label0
+      loop $label1
+        local.get $p
+        local.get $end
+        i32.eq
+        br_if $label0
+        local.get $p
+        i32.load8_u
+        call $shell_emit
+        local.get $p
+        i32.const 1
+        i32.add
+        local.set $p
+        br $label1
+      end $label1
+    end $label0
+  )
+  (func $ctype (;253;) (param $p (;0;) i32)
+    local.get $p
+    i32.const 1
+    i32.add
+    local.get $p
+    i32.load8_u
+    call $type
+  )
+  (func $to (;254;) (param $tos (;0;) i32) (result i32)
+    (local $dp i32)
+    (local $btos i32)
+    call $parseName
+    call $find!
+    drop
+    call $body
+    i32.const 4
+    i32.add
+    local.set $dp
+    i32.const 133536
+    i32.load
+    i32.eqz
+    if (result i32)
+      local.get $dp
+      local.get $tos
+      i32.const 4
+      i32.sub
+      local.tee $btos
+      i32.load
+      i32.store
+      local.get $btos
+    else
+      i32.const 0
+      call $emitSetLocal
+      local.get $dp
+      call $emitConst
+      i32.const 0
+      call $emitGetLocal
+      i32.const 4
+      call $emitConst
+      call $emitSub
+      i32.const 0
+      call $emitTeeLocal
+      call $emitLoad
+      call $emitStore
+      i32.const 0
+      call $emitGetLocal
+      local.get $tos
+    end
+  )
+  (func $ensureCompiling (;255;) (param $tos (;0;) i32) (result i32)
+    local.get $tos
+    i32.const 133536
+    i32.load
+    i32.eqz
+    if (param i32) (result i32)
+      i32.const 131118
+      call $fail
+    end
+  )
+  (func $leb128-4p (;256;) (export "leb128_4p") (param $n (;0;) i32) (result i32)
+    local.get $n
+    i32.const 127
+    i32.and
+    local.get $n
+    i32.const 16256
+    i32.and
+    i32.const 1
+    i32.shl
+    i32.or
+    local.get $n
+    i32.const 2080768
+    i32.and
+    i32.const 2
+    i32.shl
+    i32.or
+    local.get $n
+    i32.const 266338304
+    i32.and
+    i32.const 3
+    i32.shl
+    i32.or
+    i32.const 8421504
+    i32.or
+  )
+  (func $leb128 (;257;) (export "leb128") (param $p (;0;) i32) (param $value (;1;) i32) (result i32)
+    (local $more i32)
+    (local $byte i32)
+    i32.const 1
+    local.set $more
+    loop $label2
+      i32.const 127
+      local.get $value
+      i32.and
+      local.set $byte
+      local.get $value
+      i32.const 7
+      i32.shr_s
+      local.set $value
+      block $label1
+        block $label0
+          local.get $value
+          i32.eqz
+          local.get $byte
+          i32.const 64
+          i32.and
+          i32.eqz
+          i32.and
+          br_if $label0
+          local.get $value
+          i32.const -1
+          i32.eq
+          local.get $byte
+          i32.const 64
+          i32.and
+          i32.const 64
+          i32.eq
+          i32.and
+          br_if $label0
+          local.get $byte
+          i32.const 128
+          i32.or
+          local.set $byte
+          br $label1
+        end $label0
+        i32.const 0
+        local.set $more
+      end $label1
+      local.get $p
+      local.get $byte
+      i32.store8
+      local.get $p
+      i32.const 1
+      i32.add
+      local.set $p
+      local.get $more
+      br_if $label2
+    end $label2
+    local.get $p
+  )
+  (func $leb128u (;258;) (export "leb128u") (param $p (;0;) i32) (param $value (;1;) i32) (result i32)
+    (local $byte i32)
+    loop $label0
+      i32.const 127
+      local.get $value
+      i32.and
+      local.set $byte
+      local.get $value
+      i32.const 7
+      i32.shr_u
+      local.set $value
+      local.get $value
+      i32.eqz
+      if
+      else
+        local.get $byte
+        i32.const 128
+        i32.or
+        local.set $byte
+      end
+      local.get $p
+      local.get $byte
+      i32.store8
+      local.get $p
+      i32.const 1
+      i32.add
+      local.set $p
+      local.get $value
+      br_if $label0
+    end $label0
+    local.get $p
+  )
+  (func $body (;259;) (param $xt (;0;) i32) (result i32)
+    local.get $xt
+    local.get $xt
+    i32.const 4
+    i32.add
+    i32.load8_u
+    i32.const 31
+    i32.and
+    i32.add
+    i32.const 8
+    i32.add
+    i32.const -4
+    i32.and
+  )
+  (func $numberToChar (;260;) (param $v (;0;) i32) (result i32)
+    local.get $v
+    i32.const 10
+    i32.ge_u
+    if (result i32)
+      local.get $v
+      i32.const 55
+      i32.add
+    else
+      local.get $v
+      i32.const 48
+      i32.add
+    end
+  )
+  (func $parseName (;261;) (result i32) (result i32)
+    i32.const 32
+    call $skip
+    i32.const 32
+    call $parse
+  )
+  (func $parse (;262;) (param $delim (;0;) i32) (result i32) (result i32)
+    (local $addr i32)
+    (local $p i32)
+    (local $end i32)
+    (local $c i32)
+    (local $delimited i32)
+    global.get $inputBufferBase
+    i32.const 131892
+    i32.load
+    i32.add
+    local.tee $addr
+    local.set $p
+    global.get $inputBufferBase
+    global.get $inputBufferSize
+    i32.add
+    local.set $end
+    i32.const 0
+    local.set $delimited
+    block $label0
+      block $label1
+        loop $label2
+          local.get $p
+          local.get $end
+          i32.eq
+          br_if $label0
+          local.get $p
+          i32.load8_s
+          local.set $c
+          local.get $p
+          i32.const 1
+          i32.add
+          local.set $p
+          local.get $c
+          i32.const 10
+          i32.eq
+          br_if $label1
+          local.get $c
+          local.get $delim
+          i32.ne
+          br_if $label2
+        end $label2
+      end $label1
+      i32.const 1
+      local.set $delimited
+    end $label0
+    i32.const 131892
+    local.get $p
+    global.get $inputBufferBase
+    i32.sub
+    i32.store
+    local.get $addr
+    local.get $p
+    local.get $delimited
+    i32.sub
+    local.get $addr
+    i32.sub
+  )
+  (func $skip (;263;) (param $delim (;0;) i32)
+    (local $addr i32)
+    (local $p i32)
+    (local $end i32)
+    (local $c i32)
+    global.get $inputBufferBase
+    i32.const 131892
+    i32.load
+    i32.add
+    local.tee $addr
+    local.set $p
+    global.get $inputBufferBase
+    global.get $inputBufferSize
+    i32.add
+    local.set $end
+    block $label0
+      loop $label1
+        local.get $p
+        local.get $end
+        i32.eq
+        br_if $label0
+        local.get $p
+        i32.load8_s
+        local.set $c
+        local.get $c
+        local.get $delim
+        i32.ne
+        br_if $label0
+        local.get $p
+        i32.const 1
+        i32.add
+        local.set $p
+        local.get $c
+        i32.const 10
+        i32.ne
+        br_if $label1
+      end $label1
+    end $label0
+    i32.const 131892
+    local.get $p
+    global.get $inputBufferBase
+    i32.sub
+    i32.store
+  )
+  (func $readNumber (;264;) (param $addr (;0;) i32) (param $len (;1;) i32) (result i32) (result i32)
+    (local $restcount i32)
+    (local $value i32)
+    local.get $len
+    i32.eqz
+    if
+      i32.const -1
+      i32.const -1
+      return
+    end
+    i64.const 0
+    local.get $addr
+    local.get $len
+    call $number
+    local.set $restcount
+    drop
+    i32.wrap_i64
+    local.get $restcount
+  )
+  (func $number (;265;) (param $value (;0;) i64) (param $addr (;1;) i32) (param $length (;2;) i32) (result i64) (result i32) (result i32)
+    (local $p i32)
+    (local $sign i64)
+    (local $char i32)
+    (local $base i32)
+    (local $end i32)
+    (local $n i32)
+    local.get $addr
+    local.set $p
+    local.get $p
+    local.get $length
+    i32.add
+    local.set $end
+    i32.const 132108
+    i32.load
+    local.set $base
+    local.get $p
+    i32.load8_u
+    local.tee $char
+    i32.const 45
+    i32.eq
+    if
+      i64.const -1
+      local.set $sign
+      i32.const 48
+      local.set $char
+      local.get $length
+      i32.const 1
+      i32.eq
+      if
+        local.get $value
+        local.get $p
+        local.get $length
+        return
+      end
+    else
+      i64.const 1
+      local.set $sign
+    end
+    block $label0
+      loop $label1
+        local.get $char
+        i32.const 48
+        i32.lt_s
+        if
+          br $label0
+        end
+        local.get $char
+        i32.const 57
+        i32.le_s
+        if
+          local.get $char
+          i32.const 48
+          i32.sub
+          local.set $n
+        else
+          local.get $char
+          i32.const 65
+          i32.lt_s
+          if
+            br $label0
+          end
+          local.get $char
+          i32.const 55
+          i32.sub
+          local.set $n
+        end
+        local.get $n
+        local.get $base
+        i32.ge_s
+        if
+          br $label0
+        end
+        local.get $value
+        local.get $base
+        i64.extend_i32_u
+        i64.mul
+        local.get $n
+        i64.extend_i32_u
+        i64.add
+        local.set $value
+        local.get $p
+        i32.const 1
+        i32.add
+        local.set $p
+        local.get $p
+        local.get $end
+        i32.eq
+        br_if $label0
+        local.get $p
+        i32.load8_s
+        local.set $char
+        br $label1
+      end $label1
+    end $label0
+    local.get $sign
+    local.get $value
+    i64.mul
+    local.get $p
+    local.get $end
+    local.get $p
+    i32.sub
+  )
+  (func $hexchar (;266;) (param $c (;0;) i32) (result i32)
+    local.get $c
+    i32.const 57
+    i32.le_u
+    if (result i32)
+      local.get $c
+      i32.const 48
+      i32.sub
+    else
+      local.get $c
+      i32.const 90
+      i32.le_u
+      if (result i32)
+        local.get $c
+        i32.const 55
+        i32.sub
+      else
+        local.get $c
+        i32.const 87
+        i32.sub
+      end
+    end
+  )
+  (func $find (;267;) (param $addr (;0;) i32) (param $len (;1;) i32) (result i32) (result i32)
+    (local $entryP i32)
+    (local $entryLF i32)
+    global.get $latest
+    local.set $entryP
+    loop $label1
+      block $label0
+        local.get $entryP
+        i32.const 4
+        i32.add
+        i32.load
+        local.tee $entryLF
+        i32.const 32
+        i32.and
+        br_if $label0
+        local.get $addr
+        local.get $len
+        local.get $entryP
+        i32.const 5
+        i32.add
+        local.get $entryLF
+        i32.const 31
+        i32.and
+        call $stringEqual
+        i32.eqz
+        br_if $label0
+        local.get $entryP
+        local.get $entryLF
+        i32.const 128
+        i32.and
+        i32.eqz
+        if (result i32)
+          i32.const -1
+        else
+          i32.const 1
+        end
+        return
+      end $label0
+      local.get $entryP
+      i32.load
+      local.set $entryP
+      local.get $entryP
+      br_if $label1
+    end $label1
+    i32.const 0
+    i32.const 0
+  )
+  (func $find! (;268;) (param $addr (;0;) i32) (param $len (;1;) i32) (result i32) (result i32)
+    (local $r i32)
+    local.get $addr
+    local.get $len
+    call $find
+    local.tee $r
+    i32.eqz
+    if
+      local.get $addr
+      local.get $len
+      call $failUndefinedWord
+    end
+    local.get $r
+  )
+  (func $aligned (;269;) (param $addr (;0;) i32) (result i32)
+    local.get $addr
+    i32.const 3
+    i32.add
+    i32.const -4
+    i32.and
+  )
+  (func $U._ (;270;) (param $v (;0;) i32) (param $base (;1;) i32)
+    (local $m i32)
+    local.get $v
+    local.get $base
+    i32.rem_u
+    local.set $m
+    local.get $v
+    local.get $base
+    i32.div_u
+    local.set $v
+    local.get $v
+    i32.eqz
+    if
+    else
+      local.get $v
+      local.get $base
+      call $U._
+    end
+    local.get $m
+    call $numberToChar
+    call $shell_emit
+  )
+  (func $push (;271;) (export "push") (param $v (;0;) i32)
+    global.get $tos
+    local.get $v
+    call $push
+    global.set $tos
+  )
+  (func $pop (;272;) (export "pop") (result i32)
+    (local $result i32)
+    global.get $tos
+    call $pop
+    local.set $result
+    global.set $tos
+    local.get $result
+  )
+  (func $tos (;273;) (export "tos") (result i32)
+    global.get $tos
+  )
+  (func $here (;274;) (export "here") (result i32)
+    global.get $here
+  )
+  (func $error (;275;) (export "error") (result i32)
+    global.get $error
+  )
+  (data (i32.const 4096) "\00asm\01\00\00\00\01\12\03`\01\7f\01\7f`\02\7f\7f\01\7f`\01\7f\02\7f\7f\02 \02\03env\05table\01p\00\fb\00\00\00\03env\06memory\02\00\01\03\02\01\fa\09\0a\01\00A\fc\00\00\00\0b\01\00\0a\ff\00\00\00\01\fe\00\00\00\01\fd\00\00\00\7f")
+  (data (i32.const 131072) "\0eundefined word")
+  (data (i32.const 131087) "\0ddivision by 0")
+  (data (i32.const 131101) "\10incomplete input")
+  (data (i32.const 131118) "$word not supported in interpret mode")
+  (data (i32.const 131155) "\0fnot implemented")
+  (data (i32.const 131171) "\11ADDRESS-UNIT-BITS")
+  (data (i32.const 131189) "\0f/COUNTED-STRING")
+  (data (i32.const 131205) "\0bstack empty")
+  (data (i32.const 131217) "\03ok\0a")
+  (data (i32.const 131221) "\06error\0a")
+  (data (i32.const 131228) "\09compiled\0a")
+  (data (i32.const 131240) "\00\00\00\00\85;CODE  \10\00\00\00")
+  (data (i32.const 131256) "\a8\00\02\00\07:NONAME\11\00\00\00")
+  (data (i32.const 131272) "\b8\00\02\00\01!  \12\00\00\00")
+  (data (i32.const 131284) "\c8\00\02\00\83?DO\13\00\00\00")
+  (data (i32.const 131296) "\d4\00\02\00\82.( \14\00\00\00")
+  (data (i32.const 131308) "\e0\00\02\00\01#  \15\00\00\00")
+  (data (i32.const 131320) "\ec\00\02\00\02#> \16\00\00\00")
+  (data (i32.const 131332) "\f8\00\02\00\02#S \17\00\00\00")
+  (data (i32.const 131344) "\04\01\02\00\01'  \18\00\00\00")
+  (data (i32.const 131356) "\10\01\02\00\81(  \19\00\00\00")
+  (data (i32.const 131368) "\1c\01\02\00\01*  \1a\00\00\00")
+  (data (i32.const 131380) "(\01\02\00\02*/ \1b\00\00\00")
+  (data (i32.const 131392) "4\01\02\00\05*/MOD  \1c\00\00\00")
+  (data (i32.const 131408) "@\01\02\00\01+  \1d\00\00\00")
+  (data (i32.const 131420) "P\01\02\00\02+! \1e\00\00\00")
+  (data (i32.const 131432) "\5c\01\02\00\85+LOOP  \1f\00\00\00")
+  (data (i32.const 131448) "h\01\02\00\01,   \00\00\00")
+  (data (i32.const 131460) "x\01\02\00\01-  !\00\00\00")
+  (data (i32.const 131472) "\84\01\02\00\01.  \22\00\00\00")
+  (data (i32.const 131484) "\90\01\02\00\82.\22 #\00\00\00")
+  (data (i32.const 131496) "\9c\01\02\00\02.S $\00\00\00")
+  (data (i32.const 131508) "\a8\01\02\00\01/  %\00\00\00")
+  (data (i32.const 131520) "\b4\01\02\00\04/MOD   &\00\00\00")
+  (data (i32.const 131536) "\c0\01\02\00\02<> '\00\00\00")
+  (data (i32.const 131548) "\d0\01\02\00\03$S,(\00\00\00")
+  (data (i32.const 131560) "\dc\01\02\00\03$U,)\00\00\00")
+  (data (i32.const 131572) "\e8\01\02\00\020< *\00\00\00")
+  (data (i32.const 131584) "\f4\01\02\00\030<>+\00\00\00")
+  (data (i32.const 131596) "\00\02\02\00\020= ,\00\00\00")
+  (data (i32.const 131608) "\0c\02\02\00\020> -\00\00\00")
+  (data (i32.const 131620) "\18\02\02\00\021+ .\00\00\00")
+  (data (i32.const 131632) "$\02\02\00\021- /\00\00\00")
+  (data (i32.const 131644) "0\02\02\00\022! 0\00\00\00")
+  (data (i32.const 131656) "<\02\02\00\022* 1\00\00\00")
+  (data (i32.const 131668) "H\02\02\00\022/ 2\00\00\00")
+  (data (i32.const 131680) "T\02\02\00\022@ 3\00\00\00")
+  (data (i32.const 131692) "`\02\02\00\032>R4\00\00\00")
+  (data (i32.const 131704) "l\02\02\00\052DROP  5\00\00\00")
+  (data (i32.const 131720) "x\02\02\00\042DUP   6\00\00\00")
+  (data (i32.const 131736) "\88\02\02\00\052OVER  7\00\00\00")
+  (data (i32.const 131752) "\98\02\02\00\032R@8\00\00\00")
+  (data (i32.const 131764) "\a8\02\02\00\032R>9\00\00\00")
+  (data (i32.const 131776) "\b4\02\02\00\052SWAP  :\00\00\00")
+  (data (i32.const 131792) "\c0\02\02\00\01:  ;\00\00\00")
+  (data (i32.const 131804) "\d0\02\02\00\81;  <\00\00\00")
+  (data (i32.const 131816) "\dc\02\02\00\01<  =\00\00\00")
+  (data (i32.const 131828) "\e8\02\02\00\02<# >\00\00\00")
+  (data (i32.const 131840) "\f4\02\02\00\01=  ?\00\00\00")
+  (data (i32.const 131852) "\00\03\02\00\01>  @\00\00\00")
+  (data (i32.const 131864) "\0c\03\02\00\05>BODY  A\00\00\00")
+  (data (i32.const 131880) "\18\03\02\00C>IN\03\00\00\00\00\00\00\00")
+  (data (i32.const 131896) "(\03\02\00\07>NUMBERB\00\00\00")
+  (data (i32.const 131912) "8\03\02\00\02>R C\00\00\00")
+  (data (i32.const 131924) "H\03\02\00\04?DUP   D\00\00\00")
+  (data (i32.const 131940) "T\03\02\00\01@  E\00\00\00")
+  (data (i32.const 131952) "d\03\02\00\05ABORT  F\00\00\00")
+  (data (i32.const 131968) "p\03\02\00\86ABORT\22 G\00\00\00")
+  (data (i32.const 131984) "\80\03\02\00\03ABSH\00\00\00")
+  (data (i32.const 131996) "\90\03\02\00\06ACCEPT I\00\00\00")
+  (data (i32.const 132012) "\9c\03\02\00\89ACTION-OF  J\00\00\00")
+  (data (i32.const 132032) "\ac\03\02\00\05ALIGN  K\00\00\00")
+  (data (i32.const 132048) "\c0\03\02\00\07ALIGNEDL\00\00\00")
+  (data (i32.const 132064) "\d0\03\02\00\05ALLOT  M\00\00\00")
+  (data (i32.const 132080) "\e0\03\02\00\03ANDN\00\00\00")
+  (data (i32.const 132092) "\f0\03\02\00DBASE   \03\00\00\00\0a\00\00\00")
+  (data (i32.const 132112) "\fc\03\02\00\85BEGIN  O\00\00\00")
+  (data (i32.const 132128) "\10\04\02\00\02BL P\00\00\00")
+  (data (i32.const 132140) " \04\02\00\07BUFFER:Q\00\00\00")
+  (data (i32.const 132156) ",\04\02\00\03BYER\00\00\00")
+  (data (i32.const 132168) "<\04\02\00\02C! S\00\00\00")
+  (data (i32.const 132180) "H\04\02\00\02C, T\00\00\00")
+  (data (i32.const 132192) "T\04\02\00\82C\22 U\00\00\00")
+  (data (i32.const 132204) "`\04\02\00\02C@ V\00\00\00")
+  (data (i32.const 132216) "l\04\02\00\05CELL+  W\00\00\00")
+  (data (i32.const 132232) "x\04\02\00\05CELLS  X\00\00\00")
+  (data (i32.const 132248) "\88\04\02\00\04CHAR   Y\00\00\00")
+  (data (i32.const 132264) "\98\04\02\00\05CHAR+  Z\00\00\00")
+  (data (i32.const 132280) "\a8\04\02\00\05CHARS  [\00\00\00")
+  (data (i32.const 132296) "\b8\04\02\00\04CODE   \5c\00\00\00")
+  (data (i32.const 132312) "\c8\04\02\00\08COMPILE,   ]\00\00\00")
+  (data (i32.const 132332) "\d8\04\02\00\08CONSTANT   ^\00\00\00")
+  (data (i32.const 132352) "\ec\04\02\00\05COUNT  _\00\00\00")
+  (data (i32.const 132368) "\00\05\02\00\02CR `\00\00\00")
+  (data (i32.const 132380) "\10\05\02\00\06CREATE a\00\00\00")
+  (data (i32.const 132396) "\1c\05\02\00\07DECIMALb\00\00\00")
+  (data (i32.const 132412) ",\05\02\00\05DEFER  c\00\00\00")
+  (data (i32.const 132428) "<\05\02\00\06DEFER! d\00\00\00")
+  (data (i32.const 132444) "L\05\02\00\06DEFER@ e\00\00\00")
+  (data (i32.const 132460) "\5c\05\02\00\05DEPTH  f\00\00\00")
+  (data (i32.const 132476) "l\05\02\00\82DO g\00\00\00")
+  (data (i32.const 132488) "|\05\02\00\85DOES>  h\00\00\00")
+  (data (i32.const 132504) "\88\05\02\00\04DROP   i\00\00\00")
+  (data (i32.const 132520) "\98\05\02\00\03DUPj\00\00\00")
+  (data (i32.const 132532) "\a8\05\02\00\84ELSE   k\00\00\00")
+  (data (i32.const 132548) "\b4\05\02\00\04EMIT   l\00\00\00")
+  (data (i32.const 132564) "\c4\05\02\00\0cENVIRONMENT?   m\00\00\00")
+  (data (i32.const 132588) "\d4\05\02\00\05ERASE  n\00\00\00")
+  (data (i32.const 132604) "\ec\05\02\00\08EVALUATE   o\00\00\00")
+  (data (i32.const 132624) "\fc\05\02\00\07EXECUTEp\00\00\00")
+  (data (i32.const 132640) "\10\06\02\00\84EXIT   q\00\00\00")
+  (data (i32.const 132656) " \06\02\00\05FALSE  r\00\00\00")
+  (data (i32.const 132672) "0\06\02\00\04FILL   s\00\00\00")
+  (data (i32.const 132688) "@\06\02\00\04FIND   t\00\00\00")
+  (data (i32.const 132704) "P\06\02\00\06FM/MOD u\00\00\00")
+  (data (i32.const 132720) "`\06\02\00\04HERE   v\00\00\00")
+  (data (i32.const 132736) "p\06\02\00\03HEXw\00\00\00")
+  (data (i32.const 132748) "\80\06\02\00\04HOLD   x\00\00\00")
+  (data (i32.const 132764) "\8c\06\02\00\05HOLDS  y\00\00\00")
+  (data (i32.const 132780) "\9c\06\02\00\01I  z\00\00\00")
+  (data (i32.const 132792) "\ac\06\02\00\82IF {\00\00\00")
+  (data (i32.const 132804) "\b8\06\02\00\09IMMEDIATE  |\00\00\00")
+  (data (i32.const 132824) "\c4\06\02\00\06INVERT }\00\00\00")
+  (data (i32.const 132840) "\d8\06\02\00\82IS ~\00\00\00")
+  (data (i32.const 132852) "\e8\06\02\00\01J  \7f\00\00\00")
+  (data (i32.const 132864) "\f4\06\02\00\03KEY\80\00\00\00")
+  (data (i32.const 132876) "\00\07\02\00\06LATEST \81\00\00\00")
+  (data (i32.const 132892) "\0c\07\02\00\85LEAVE  \82\00\00\00")
+  (data (i32.const 132908) "\1c\07\02\00\87LITERAL\83\00\00\00")
+  (data (i32.const 132924) ",\07\02\00\84LOOP   \84\00\00\00")
+  (data (i32.const 132940) "<\07\02\00\06LSHIFT \85\00\00\00")
+  (data (i32.const 132956) "L\07\02\00\02M* \86\00\00\00")
+  (data (i32.const 132968) "\5c\07\02\00\06MARKER \87\00\00\00")
+  (data (i32.const 132984) "h\07\02\00\03MAX\88\00\00\00")
+  (data (i32.const 132996) "x\07\02\00\03MIN\89\00\00\00")
+  (data (i32.const 133008) "\84\07\02\00\03MOD\8a\00\00\00")
+  (data (i32.const 133020) "\90\07\02\00\04MOVE   \8b\00\00\00")
+  (data (i32.const 133036) "\9c\07\02\00\06NEGATE \8c\00\00\00")
+  (data (i32.const 133052) "\ac\07\02\00\03NIP\8d\00\00\00")
+  (data (i32.const 133064) "\bc\07\02\00\02OR \8e\00\00\00")
+  (data (i32.const 133076) "\c8\07\02\00\04OVER   \8f\00\00\00")
+  (data (i32.const 133092) "\d4\07\02\00\03PAD\90\00\00\00")
+  (data (i32.const 133104) "\e4\07\02\00\05PARSE  \91\00\00\00")
+  (data (i32.const 133120) "\f0\07\02\00\0aPARSE-NAME \92\00\00\00")
+  (data (i32.const 133140) "\00\08\02\00\04PICK   \93\00\00\00")
+  (data (i32.const 133156) "\14\08\02\00\88POSTPONE   \94\00\00\00")
+  (data (i32.const 133176) "$\08\02\00\04QUIT   \95\00\00\00")
+  (data (i32.const 133192) "8\08\02\00\02R> \96\00\00\00")
+  (data (i32.const 133204) "H\08\02\00\02R@ \97\00\00\00")
+  (data (i32.const 133216) "T\08\02\00\06RANDOM \98\00\00\00")
+  (data (i32.const 133232) "`\08\02\00\87RECURSE\99\00\00\00")
+  (data (i32.const 133248) "p\08\02\00\06REFILL \9a\00\00\00")
+  (data (i32.const 133264) "\80\08\02\00\86REPEAT \9b\00\00\00")
+  (data (i32.const 133280) "\90\08\02\00\0dRESTORE-INPUT  \9c\00\00\00")
+  (data (i32.const 133304) "\a0\08\02\00\04ROLL   \9d\00\00\00")
+  (data (i32.const 133320) "\b8\08\02\00\03ROT\9e\00\00\00")
+  (data (i32.const 133332) "\c8\08\02\00\06RSHIFT \9f\00\00\00")
+  (data (i32.const 133348) "\d4\08\02\00\82S\22 \a0\00\00\00")
+  (data (i32.const 133360) "\e4\08\02\00\83S\5c\22\a1\00\00\00")
+  (data (i32.const 133372) "\f0\08\02\00\03S>D\a2\00\00\00")
+  (data (i32.const 133384) "\fc\08\02\00\0aSAVE-INPUT \a3\00\00\00")
+  (data (i32.const 133404) "\08\09\02\00\05SCALL  \a4\00\00\00")
+  (data (i32.const 133420) "\1c\09\02\00\04SIGN   \a5\00\00\00")
+  (data (i32.const 133436) ",\09\02\00\06SM/REM \a6\00\00\00")
+  (data (i32.const 133452) "<\09\02\00\06SOURCE \a7\00\00\00")
+  (data (i32.const 133468) "L\09\02\00\09SOURCE-ID  \a8\00\00\00")
+  (data (i32.const 133488) "\5c\09\02\00\05SPACE  \a9\00\00\00")
+  (data (i32.const 133504) "p\09\02\00\06SPACES \aa\00\00\00")
+  (data (i32.const 133520) "\80\09\02\00ESTATE  \03\00\00\00\00\00\00\00")
+  (data (i32.const 133540) "\90\09\02\00\04SWAP   \ab\00\00\00")
+  (data (i32.const 133556) "\a4\09\02\00\84THEN   \ac\00\00\00")
+  (data (i32.const 133572) "\b4\09\02\00\82TO \ad\00\00\00")
+  (data (i32.const 133584) "\c4\09\02\00\04TRUE   \ae\00\00\00")
+  (data (i32.const 133600) "\d0\09\02\00\04TUCK   \af\00\00\00")
+  (data (i32.const 133616) "\e0\09\02\00\04TYPE   \b0\00\00\00")
+  (data (i32.const 133632) "\f0\09\02\00\02U. \b1\00\00\00")
+  (data (i32.const 133644) "\00\0a\02\00\02U< \b2\00\00\00")
+  (data (i32.const 133656) "\0c\0a\02\00\02U> \b3\00\00\00")
+  (data (i32.const 133668) "\18\0a\02\00\03UM*\b4\00\00\00")
+  (data (i32.const 133680) "$\0a\02\00\06UM/MOD \b5\00\00\00")
+  (data (i32.const 133696) "0\0a\02\00\86UNLOOP \b6\00\00\00")
+  (data (i32.const 133712) "@\0a\02\00\85UNTIL  \b7\00\00\00")
+  (data (i32.const 133728) "P\0a\02\00\06UNUSED \b8\00\00\00")
+  (data (i32.const 133744) "`\0a\02\00\05VALUE  ^\00\00\00")
+  (data (i32.const 133760) "p\0a\02\00\08VARIABLE   \b9\00\00\00")
+  (data (i32.const 133780) "\80\0a\02\00\85WHILE  \ba\00\00\00")
+  (data (i32.const 133796) "\94\0a\02\00\06WITHIN \bb\00\00\00")
+  (data (i32.const 133812) "\a4\0a\02\00\04WORD   \bc\00\00\00")
+  (data (i32.const 133828) "\b4\0a\02\00\05WORDS  \bd\00\00\00")
+  (data (i32.const 133844) "\c4\0a\02\00\03XOR\be\00\00\00")
+  (data (i32.const 133856) "\d4\0a\02\00\81[  \bf\00\00\00")
+  (data (i32.const 133868) "\e0\0a\02\00\83[']\c0\00\00\00")
+  (data (i32.const 133880) "\ec\0a\02\00\86[CHAR] \c1\00\00\00")
+  (data (i32.const 133896) "\f8\0a\02\00\81\5c  \c2\00\00\00")
+  (data (i32.const 133908) "\08\0b\02\00\01]  \c3\00\00\00")
+)
