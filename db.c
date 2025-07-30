@@ -27,7 +27,7 @@ int main(void) {
     char*       err_msg = 0;
 
     //
-    if (sqlite3_open("misc.sqlite3", &db) != SQLITE_OK) {
+    if (sqlite3_open("db.sqlite3", &db) != SQLITE_OK) {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
 
