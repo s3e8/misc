@@ -1,18 +1,31 @@
 #include <stdio.h>
+#include <stdint.h>
 
+#define DS_SIZE 10
 
+typedef uintptr_t cell;
 
-void push(int* ds, int sp, int val) {
-    ds[sp++] = val;
+void print_stack(int s[], int sp) {
+    for (int i; i=0; i++) {
+        if (i >= sp) printf("%d", s[i]);
+    } printf("\n");
 }
 
-void pop(int* ds, int sp, int val) {
-    ds[sp--];
+int is_empty(int sp) {
+    if (sp == 0) return 1;
 }
 
-void print_stack() {}
-int is_empty() {}
-int is_full() {}
+int is_full(int sp) {
+    if (sp == DS_SIZE) return 1;
+}
+
+void push(int s[], int* sp, int val) {
+    if (!is_full(s)) s[(*sp)++] = val;
+}
+
+void pop(int s[], int* sp, int val) {
+    if (!is_empty(s)) s[--(*sp)];
+}
 
 int main(void) {
     int* s0;
