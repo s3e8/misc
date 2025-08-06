@@ -10,52 +10,100 @@
 
 typedef uintptr_t cell;
 
-int sp;
-int ds[10];
+int* sp;
+int s0[10];
 
-void print_stack(int s[], int sp) {
+void print_stack() {
     printf("ds: [ ");
-    for (int i = 0; i<sp; i++) printf("%d ", s[i]);
+    for (int* i = sp; i < s0 + DS_SIZE; i++) printf("%d ", *i);
     printf("]\n");
 }
 
-int is_empty(int* sp) {
-    return *sp == 0;
+int is_empty() {
+    return sp == s0 + DS_SIZE;
 }
 
-int is_full(int* sp) {
-    return *sp == DS_SIZE;
+int is_full() {
+    return sp == s0;
 }
 
-void push(int s[], int* sp, int val) {
-    if (!is_full(sp)) s[(*sp)++] = val;
+void push(int val) {
+    if (!is_full()) *--sp = val;
+    else fprintf(stderr, "stack overflow\n");
 }
 
-void pop(int* sp) {
-    if (!is_empty(sp)) --(*sp);
+int pop() {
+    if (!is_empty()) return *sp++;
+    else fprintf(stderr, "stack underflow\n"); return 0;
 }
 
 void eval(const char* word) {
-    printf("Eval: %s\n", word);
-}
+    // printf("Eval: %s\n", word);
+    // eval
+    // dup
+    // swap
+    // here
+    // emit
 
-void readline() {
-    char input[INBUF_SIZE];
-    char* words[MAX_WORDS];
-    int word_count = 0;
+    if (strcmp(word, "+") == 0) {
+        int a = pop();
+        int b = pop();
+        printf("b = %d, a = %d\n", b, a); 
+        push(a + b);
+        print_stack();
+    } else
 
-    if(fgets(input, INBUF_SIZE, stdin)) {
-        input[strcspn(input, "\n")] = '\0';
+    if (strcmp(word, "-") == 0) {
+        int a = pop();
+        int b = pop();
+        printf("b = %d, a = %d\n", b, a); 
+        push(b - a);
+        print_stack();
+    } else
 
-        char* token = strtok(input, " \t");
-        while (token != NULL && word_count < MAX_WORDS) {
-            words[word_count++] = token;
-            token = strtok(NULL, " \t");
-        }
+    if (strcmp(word, "=") == 0) {
+        push(pop() == pop() ? -1 : 0);
+        print_stack();
+    }
 
-        for (int i = 0; i < word_count; i++) {
-            eval(words[i]);
-        }
+    if (strcmp(word, ".") == 0) {
+        printf("%d", *sp);
+        print_stack();
+    } else
+
+    if (strcmp(word, "dup") == 0) {
+        push(*sp);
+        print_stack();
+    } else
+
+    if (strcmp(word, "drop") == 0) {
+        pop();
+        print_stack();
+    } else
+
+    if (strcmp(word, "swap") == 0) {
+        int a = pop();
+        int b = pop();
+        push(a);
+        push(b);
+        print_stack();
+    } else
+
+    if (strcmp(word, "over") == 0) {
+        int a = pop();
+        int b = pop();
+        push(b);
+        push(a);
+        push(b);
+        print_stack();
+    } else
+
+    if (strcmp(word, "ps") == 0) {
+        print_stack();
+    } else
+
+    if (strcmp(word, "br") == 0) {
+        printf("\n");
     }
 }
 
@@ -63,16 +111,17 @@ void fth_readline()
 {
     static char inbuf[INBUF_SIZE];
 
-    while(printf(">"), fgets(inbuf, INBUF_SIZE, stdin))
-    {
+    while(printf("> "), fgets(inbuf, INBUF_SIZE, stdin)) {
         inbuf[strcspn(inbuf, "\n")] = '\0';
         char* word = strtok(inbuf, " \t");
         while (word) {
-            if (isdigit(word[0])) { // todo: change to is_number later
+            if (isdigit(word[0]) || (word[0] == '-' && isdigit(word[1]))) { // todo: change to is_number
                 printf("push: %d\n", atoi(word));
-                push(ds, &sp, atoi(word));
+                push(atoi(word));
+                print_stack();
             } else {
-                eval(word);
+                if (strcmp(word, "bye") == 0) return;
+                else eval(word);
             }
 
             word = strtok(NULL, " \t");
@@ -80,23 +129,10 @@ void fth_readline()
     }
 }
 
-int main(void) {
-    // int sp;
-    // int ds[10];
-    // print_stack(ds, sp);
-    // push(ds, &sp, 10);
-    // push(ds, &sp, 158);
-    // print_stack(ds, sp);
-    // pop(&sp);
-    // print_stack(ds, sp);
-    // s0 = datastack;
-    // sp = s0;
-
-    // while (1) {
-    //     printf(">");
-    //     readline();
-    // }
-    fth_readline();
+int main(void) 
+{
+    sp = s0 + DS_SIZE;
     
+    fth_readline();
     return 1;
 }
