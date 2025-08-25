@@ -8,7 +8,11 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 /*** data ***/
-struct termios orig_termios;
+struct tty_cfg {
+    struct termios orig_termios;
+};
+
+struct tty_cfg cfg;
 
 /*** terminal ***/
 void die(const char* s) {
@@ -20,16 +24,16 @@ void die(const char* s) {
 }
 
 void disable_raw_mode() {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &cfg.orig_termios) == -1) {
         die("tcsetattr");
     };
 }
 
 void enable_raw_mode() {
-    if (tcgetattr(STDERR_FILENO, &orig_termios) == -1) die("tcgetattr");
+    if (tcgetattr(STDERR_FILENO, &cfg.orig_termios) == -1) die("tcgetattr");
     atexit(disable_raw_mode); // stdlib
 
-    struct termios raw = orig_termios;
+    struct termios raw = cfg.orig_termios;
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |=  (CS8);
@@ -50,9 +54,20 @@ char tty_read_key() {
     return c;
 }
 
+void tty_draw_rows() {
+    int y;
+    for(y = 0; y < 24; y++) {
+        write(STDOUT_FILENO, "~\r\n", 3);
+    }
+}
+
 /*** output ***/
 void tty_refresh_screen() {
     write(STDOUT_FILENO, "\x1b[2J]", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
+    tty_draw_rows();
+
     write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
