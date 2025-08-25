@@ -29,7 +29,7 @@ void enable_raw_mode() {
     struct termios raw = orig_termios;
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     raw.c_oflag &= ~(OPOST);
-    raw.c_cflag |= ~(CS8);
+    raw.c_cflag |=  (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
@@ -40,7 +40,7 @@ void enable_raw_mode() {
 char tty_read_key() {
     int nread;
     char c;
-    while((nread = read(STDIN_FILENO, &c, 1) == -1)) {
+    while((nread = read(STDIN_FILENO, &c, 1)) == -1) {
         if (nread == -1 && errno != EAGAIN) die("read");
     }
 
@@ -55,9 +55,9 @@ void tty_process_key_press() {
         case CTRL_KEY('q'):
             exit(0);
             break;
-        case 'q':
-            exit(0);
-            break;
+        // case 'q':
+        //     exit(0);
+        //     break;
     }
 }
 
