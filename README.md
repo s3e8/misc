@@ -7,3 +7,6 @@ compile db.c with: ```gcc db.c -Llib/sqlite3 -lsqlite3 -o db -lpthread -ldl```
 
 - or -
 compile all in one go: ```gcc db.c lib/sqlite3/sqlite3.c -o db -lpthread -ldl``` 
+
+## ?s
+how to block less for input?
