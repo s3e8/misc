@@ -12,6 +12,9 @@ struct termios orig_termios;
 
 /*** terminal ***/
 void die(const char* s) {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
     perror(s);
     exit(1);
 }
@@ -47,17 +50,22 @@ char tty_read_key() {
     return c;
 }
 
+/*** output ***/
+void tty_refresh_screen() {
+    write(STDOUT_FILENO, "\x1b[2J]", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
 /*** input ***/
 void tty_process_key_press() {
     char c = tty_read_key();
 
     switch (c) {
         case CTRL_KEY('q'):
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
-        // case 'q':
-        //     exit(0);
-        //     break;
     }
 }
 
@@ -67,6 +75,7 @@ int main() {
   enable_raw_mode();
 
   while(1) {
+    tty_refresh_screen();
     tty_process_key_press();
   }
 
