@@ -73,27 +73,13 @@ int get_cursor_position(int* rows, int* cols) {
     if (buf[0] != '\x1b' || buf[1] != '[') return -1;
     if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
 
-    // printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
-
-    // printf("\r\n");
-    // char c;
-    // while (read(STDIN_FILENO, &c, 1) == 1) {
-    //     if(iscntrl(c)) {
-    //         printf("%d\r\n", c);
-    //     }
-    //     else {
-    //         printf("%d ('%c')\r\n", c, c);
-    //     }
-    // }
-    // tty_read_key();
-
     return -0;
 }
 
 int get_window_size(int* r, int* c) {
     struct winsize ws;
 
-    if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
         return get_cursor_position(r, c);
     } 
@@ -104,16 +90,23 @@ int get_window_size(int* r, int* c) {
     }
 }
 
+/*** append buffer ***/
+
+
 /*** output ***/
 void tty_draw_rows() {
     int y;
     for(y = 0; y < cfg.rows; y++) {
-        write(STDOUT_FILENO, "~\r\n", 3);
+        write(STDOUT_FILENO, "~", 1);
+        
+        if (y < cfg.rows - 1) {
+            write(STDOUT_FILENO, "\r\n", 3);
+        }   
     }
 }
 
 void tty_refresh_screen() {
-    write(STDOUT_FILENO, "\x1b[2J]", 4);
+    write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
 
     tty_draw_rows();
