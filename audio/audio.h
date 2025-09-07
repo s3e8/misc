@@ -1,0 +1,4 @@
+// samplerate 
+// buffersize 
+
+// ringbuf

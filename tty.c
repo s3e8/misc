@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -91,7 +92,25 @@ int get_window_size(int* r, int* c) {
 }
 
 /*** append buffer ***/
+struct abuf {
+    char* b;
+    int len;
+};
 
+#define ABUF_INIT {NULL, 0}
+
+void abuf_append(struct abuf* ab, const char* s, int len) {
+    char* new = realloc(ab->b, ab->len + len);
+
+    if (new == NULL) return;
+    memcpy(&new[ab->len], s, len);
+    ab->b = new;
+    ab->len += len;
+}
+
+void abuf_free(struct abuf* ab) {
+    free(ab->b);
+}
 
 /*** output ***/
 void tty_draw_rows() {

@@ -4,25 +4,65 @@
 #include <string.h>
 #include <ctype.h>
 
+///
+///
+///
 #define DS_SIZE 1024
 #define INBUF_SIZE 256
 #define HERE_SIZE 10*1024*1024
 #define MAX_WORDS 16
 #define MAX_WORD_LEN 32
 
+///
+///
+///
+typedef forth_vm;
+typedef cell;
+typedef word_hdr_t;
+typedef thread_t; // cooperative "green" thread, is "thread_t" posix compliant?
+void                add_word();
+void                rm_word();
+static word_hdr_t*  find_word(char* word);
+
+void get_next_line();
+void get_next_word();
+void op_eval();
+void execute();
+void op_next();
+
+int is_empty();
+int is_full();
+// void print_stack();
+// void push();
+// void pop();
+
+// helpers
+// void cfa();
+void skip_ws();
+
+
+
+
+
+
+
+
+/// 
+///
+///
 typedef uintptr_t cell;
 
-typedef struct dict_hdr_t {
+typedef struct word_hdr_t {
     cell flags;
-    struct dict_hdr_t* next;
+    struct word_hdr_t* next;
     char name[MAX_WORD_LEN];
-} dict_hdr_t;
+} word_hdr_t;
 
 static void* here;
 static void* here0;
-static dict_hdr_t* latest;
+static word_hdr_t* latest;
 
-static void** cfa(dict_hdr_t* word) {
+static void** cfa(word_hdr_t* word) {
     return (void**)(word + 1);
 }
 
@@ -32,8 +72,8 @@ static void assemble_word() {}
 static void* create_word(char* name, cell flags) {
     if (!name) name = "\0"; // for creating unnamed words
 
-    dict_hdr_t* new = (dict_hdr_t*)here;
-    here += sizeof(dict_hdr_t);
+    word_hdr_t* new = (word_hdr_t*)here;
+    here += sizeof(word_hdr_t);
 
     strncpy(new->name, name, MAX_WORD_LEN);
     new->flags = flags;
@@ -44,7 +84,7 @@ static void* create_word(char* name, cell flags) {
 }
 
 static void* create_constant() {}
-static dict_hdr_t* find_word(char* word) {}
+// static word_hdr_t* find_word(char* word) {}
 static void print_dict() {
     
 }
