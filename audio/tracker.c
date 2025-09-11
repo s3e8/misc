@@ -1,7 +1,11 @@
 
+
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
 // commands
 // play_sample
 // channelnum
+
 
 #define AUDIO_EVENT_SIZE 256
 
@@ -52,4 +56,10 @@ void listen_and_dispatch() {
     // switch case:
     // hardcoded opcodes
     // forth opcodes
+}
+
+bool load_file(const char* f) {
+    ma_decoder decoder;
+    ma_result result = ma_decoder_init_file(f, null, &decoder);
+    if (result != MA_SUCCESS) return false;
 }
