@@ -2,7 +2,8 @@
     "files.associations": {
         "sqlite3.h": "c",
         "stdlib.h": "c",
-        "cerrno": "c"
+        "cerrno": "c",
+        "stdint.h": "c"
     },
     "makefile.configureOnOpen": true
 }
