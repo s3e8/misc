@@ -22,6 +22,17 @@
 typedef uintptr_t cell;
 int cell_size = sizeof(uintptr_t);
 
+// typedef struct forth_vm {
+//     // register cell tmp
+//     // int initialized
+//     // ds
+//     // s0
+//     // rs
+//     // r0
+//     // 
+// } forth_vm;
+// forth_vm current;
+
 typedef struct word_hdr_t {
     cell                flags;
     struct word_hdr_t*  next; // rename to prev?
@@ -141,7 +152,77 @@ static void print_memory_stats() {
 }
 
 /// reader stuff ///
+typedef struct reader_state_t {
+    FILE* stream;
+    char* linebuf;
+    cell  linebuf_size;
+    // wordbuf?
+    char* next_char;
+} reader_state_t;
 
+static void init_reader_state(reader_state_t* state, char* linebuf, cell linebuf_size, FILE* fp) {
+    state->stream       = fp;
+    state->linebuf      = linebuf;
+    state->linebuf[0]   = '\0';
+    state->linebuf_size = linebuf_size;
+    state->next_char    = linebuf;
+}
+
+static void skip_whitespace(reader_state_t* state) {
+    while(isspace(*state->next_char)) state->next_char++;
+}
+
+static cell is_eol(reader_state_t* state) {
+    skip_whitespace(state);
+    return *state->next_char=='\0';
+}
+
+static cell is_eof(reader_state_t* fp) {
+    return *fp->next_char=='\0' && feof(fp->stream);
+}
+
+static char* get_next_line(reader_state_t* state) {
+    char* tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
+    if(!tmp) return NULL;
+
+    state->next_char = tmp;
+    return tmp;
+}
+
+// static char *prompt_line(const char *prompt, reader_state_t *state) {}
+
+static int read_key(reader_state_t* state) { // todo: ??
+    if(*state->next_char == '\0') if(!read_next_line(state)) return -1;
+
+    return *state->next_char++;
+}
+
+static char* read_word(reader_state_t* state, char* tobuf) {
+    char* buf = tobuf;
+
+    // skip whitespace first
+    skipws:
+        skip_whitespace(state);
+
+    // buffer exhausted? fill and reskip whitespace
+    if(*state->next_char == '\0') {
+        if(!read_next_line(state)) return NULL;
+        goto skipws; 
+    }
+
+    // copy until next whitespace
+    while(*state->next_char!='\0' && !isspace(*state->next_char)) {
+        *buf++ = *state->next_char++;
+    }
+    state->next_char++;
+    *buf = '\0';
+
+    return tobuf;
+}
+
+static void emit_char(int c, FILE* fp) {
+    fputc(c, fp);
+}
 
 //////////////////
 //////////////////
@@ -225,6 +306,7 @@ static void go_forth(cell* ds, void*** rs, void*** ip) {
 int main() {
     cell   datastack[1024];  // declare ds on stack
     void** returnstack[512]; // declare rs on stack
+    // maybe also pass in s0 and r0?
 
     here_size = 10*1024*1024;   // 10mb
     here0 = malloc(here_size);  // why not HERE_SIZE
