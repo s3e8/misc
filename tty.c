@@ -9,9 +9,12 @@
 
 struct termios termios_cfg;
 
+/**/
 void tty_enable_raw_mode();
 void tty_disable_raw_mode();
 void tty_die(const char* s);
+/**/
+char tty_read_key();
 
 void tty_enable_raw_mode() {
     if (tcgetattr(STDIN_FILENO, &termios_cfg) == -1) tty_die("tcgetattr");
@@ -57,20 +60,50 @@ void tty_die(const char* s) {
     exit(1);
 }
 
+char tty_read_key() {
+    int  nread;
+    char c; // todo: should we just pass this in from the global stack? maybe itll just be a forth thing later
+
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1)
+    {
+        if (nread == -1 && errno != EAGAIN) tty_die("read");
+    }
+
+    return c;
+}
+
+void tty_process_keypress()
+{
+    char c = tty_read_key();
+
+    switch (c)
+    {
+        case 'q':
+            exit(0);
+            break;
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+
 int main()
 {
     tty_enable_raw_mode();
 
     while (1)
     {
-        char c = '\0';  // todo: do we have to initialize this every time?
-
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) tty_die("read");
-        if (iscntrl(c))             printf("%d\r\n", c);
-        else                        printf("%d ('%c')\r\n", c, c);
-        // if (c == CTRL_KEY('q'))     break;
-        if (c == 'q');              break; // temporary only for codespaces
+        tty_process_keypress();
     }
+    // while (1) {
+    //     char c = '\0';  // todo: do we have to initialize this every time?
+
+    //     if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) tty_die("read");
+    //     if (iscntrl(c))             printf("%d\r\n", c);
+    //     else                        printf("%d ('%c')\r\n", c, c);
+    //     // if (c == CTRL_KEY('q'))     break;
+    //     if (c == 'q')               break; // temporary only for codespaces
+    // }
 
     return 0;
 }
