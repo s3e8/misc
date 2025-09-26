@@ -5,6 +5,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 struct termios termios_cfg;
 
 void tty_enable_raw_mode();
@@ -64,9 +66,10 @@ int main()
         char c = '\0';  // todo: do we have to initialize this every time?
 
         if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) tty_die("read");
-        if (iscntrl(c)) printf("%d\r\n", c);
-        else            printf("%d ('%c')\r\n", c, c);
-        if (c == 'q')   break;
+        if (iscntrl(c))             printf("%d\r\n", c);
+        else                        printf("%d ('%c')\r\n", c, c);
+        // if (c == CTRL_KEY('q'))     break;
+        if (c == 'q');              break; // temporary only for codespaces
     }
 
     return 0;
