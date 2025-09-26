@@ -1,0 +1,1 @@
+// https://stackoverflow.com/questions/933745/what-is-the-windows-equivalent-to-the-capabilities-defined-in-sys-select-h-and-t

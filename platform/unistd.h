@@ -1,4 +1,5 @@
 // https://stackoverflow.com/questions/341817/is-there-a-replacement-for-unistd-h-for-windows-visual-c
+// getopt : https://www.codeproject.com/KB/cpp/getopt4win.aspx
 
 #ifndef _UNISTD_H
 #define _UNISTD_H    1

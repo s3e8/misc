@@ -19,7 +19,7 @@ struct tty_cfg {
 struct tty_cfg cfg;
 
 /*** terminal ***/
-void die(const char* s) {
+void tty_die(const char* s) {
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
 
@@ -29,12 +29,12 @@ void die(const char* s) {
 
 void disable_raw_mode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &cfg.orig_termios) == -1) {
-        die("tcsetattr");
+        tty_die("tcsetattr");
     };
 }
 
 void enable_raw_mode() {
-    if (tcgetattr(STDERR_FILENO, &cfg.orig_termios) == -1) die("tcgetattr");
+    if (tcgetattr(STDERR_FILENO, &cfg.orig_termios) == -1) tty_die("tcgetattr");
     atexit(disable_raw_mode); // stdlib
 
     struct termios raw = cfg.orig_termios;
@@ -45,14 +45,14 @@ void enable_raw_mode() {
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
 
-    if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
+    if (tcsetattr(STDERR_FILENO, TCSAFLUSH, &raw) == -1) tty_die("tcsetattr");
 }
 
 char tty_read_key() {
     int nread;
     char c;
     while((nread = read(STDIN_FILENO, &c, 1)) == -1) {
-        if (nread == -1 && errno != EAGAIN) die("read");
+        if (nread == -1 && errno != EAGAIN) tty_die("read");
     }
 
     return c;
@@ -150,7 +150,7 @@ void tty_process_key_press() {
 /*** init ***/
 
 void init_tty() {
-    if (get_window_size(&cfg.rows, &cfg.cols) == -1) die("get_window_size");
+    if (get_window_size(&cfg.rows, &cfg.cols) == -1) tty_die("get_window_size");
 }
 
 int main() {
