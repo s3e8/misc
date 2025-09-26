@@ -9,12 +9,14 @@
 
 struct termios termios_cfg;
 
-/**/
+/* terminal */
 void tty_enable_raw_mode();
 void tty_disable_raw_mode();
 void tty_die(const char* s);
-/**/
 char tty_read_key();
+void tty_process_keypress();
+/* output */
+void tty_refresh_screen();
 
 void tty_enable_raw_mode() {
     if (tcgetattr(STDIN_FILENO, &termios_cfg) == -1) tty_die("tcgetattr");
@@ -87,12 +89,17 @@ void tty_process_keypress()
     }
 }
 
+void tty_refresh_screen() {
+    write(STDIN_FILENO, "\x1b[2J", 4); // 
+}
+
 int main()
 {
     tty_enable_raw_mode();
 
     while (1)
     {
+        tty_refresh_screen();
         tty_process_keypress();
     }
     // while (1) {
