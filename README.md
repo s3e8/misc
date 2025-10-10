@@ -15,3 +15,9 @@ how to block less for input?
 ## forth words
 - [ ] forget
 - [ ] 
+
+
+
+
+nice-to-haves:
+- brightness control

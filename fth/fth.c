@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 // dictionary stuff
 #define WORD_NAME_MAX_LENGTH 32
@@ -22,6 +23,33 @@
 typedef uintptr_t cell;
 int cell_size = sizeof(uintptr_t);
 
+// // todo: reorg these
+// // dict
+// static word_hdr_t*  create_word(const char* name, cell flags);
+// static word_hdr_t*  find_word(const char* name);
+// static void**       cfa(word_hdr_t* word);
+// static void         comma(cell value);
+// static void         create_builtin(builtin_word_t* b);
+// static void*        get_builtin_code(char* name);
+// static void         assemble_word(const char* name, cell flags, void** code, cell codesize);
+// static void         create_constant(const char* name, cell value);
+// // vm
+// // reader
+// static void         init_reader_state(reader_state_t* state, char* linebuf, cell linebuf_size, FILE* fp);
+// static void         skip_whitespace(reader_state_t* state);
+// static cell         is_eol(reader_state_t* state);
+// static cell         is_eof(reader_state_t* fp);
+// static char*        get_next_line(reader_state_t* state);
+// // prompt_line?
+// static int          read_key(reader_state_t* state); // todo: wtf does this do? ... or WHY, actually
+// static char*        read_word(reader_state_t* state, char* tobuf); // todo: it's more like load_word_into_buffer
+// static void         emit_char(int c, FILE* fp);
+
+// // helpers
+// static void         create_constants();
+// static void         print_memory_stats();
+
+
 // typedef struct forth_vm {
 //     // register cell tmp
 //     // int initialized
@@ -33,7 +61,7 @@ int cell_size = sizeof(uintptr_t);
 // } forth_vm;
 // forth_vm current;
 
-typedef struct word_hdr_t {
+typedef struct word_hdr_t { /* dictionary definition header. NEVER change the order of these fields, it's crucial! */
     cell                flags;
     struct word_hdr_t*  next; // rename to prev?
     char                name[WORD_NAME_MAX_LENGTH];
@@ -46,6 +74,7 @@ typedef struct builtin_word_t {
     void* code;
 } builtin_word_t;
 
+// todo: put in vm struct//  find vm for small lisp?
 // change void* to char* for portability?
 /* free memory pointers and latest defined word */
 static void* here;      /* working memory */                // why is this void* instead of cell
@@ -59,15 +88,15 @@ static word_hdr_t* create_word(const char* name, cell flags) {
     word_hdr_t* new = (word_hdr_t*)here; // what happens in memory here?
     here += sizeof(word_hdr_t); // this is just regular integer addition integer, right?
 
-    printf("new header:   %p (*%lu)\n", new, (uintptr_t)new);
-    printf("new here:     %p (*%lu)\n", here, (uintptr_t)here);
+    printf("new header:   %p (*%lu)\n", new,    (uintptr_t)new);
+    printf("new here:     %p (*%lu)\n", here,   (uintptr_t)here);
 
     strncpy(new->name, name, WORD_NAME_MAX_LENGTH);
     new->flags  = flags;
     new->next   = latest; // rename next to prev in hdr struct?
 
     latest = new; // also whats going on in mem here? related to before in this func ofc
-    return new;
+    return new;     // why return "new" when latest is the same? or just pointer
 }
 
 // is this a "utility" function?
@@ -130,27 +159,6 @@ static void create_constants() {
     create_constant("f_deferred",   FLAG_DEFERRED);
 }
 
-static void print_memory_stats() {
-    // Calculate everything in bytes first
-    uintptr_t base = (uintptr_t)here0;
-    uintptr_t current = (uintptr_t)here;
-    uintptr_t used_bytes = current - base;
-    uintptr_t total_bytes = here_size;
-
-    // Now calculate in cells (your fundamental unit)
-    size_t cell_size = sizeof(cell);
-    uintptr_t used_cells = used_bytes / cell_size;
-    uintptr_t total_cells = total_bytes / cell_size;
-
-    printf("Memory Block: %p -> %p\n", here0, (void*)(base + total_bytes));
-    printf("Used:  %6lu bytes / %6lu cells\n", used_bytes, used_cells);
-    printf("Free:  %6lu bytes / %6lu cells\n", total_bytes - used_bytes, total_cells - used_cells);
-    printf("Total: %6lu bytes / %6lu cells\n", total_bytes, total_cells);
-
-    // Print the current 'here' as an offset from the base
-    printf("Current 'here' offset: %lu bytes / %lu cells\n", used_bytes, used_cells);
-}
-
 /// reader stuff ///
 typedef struct reader_state_t {
     FILE* stream;
@@ -168,6 +176,14 @@ static void init_reader_state(reader_state_t* state, char* linebuf, cell linebuf
     state->next_char    = linebuf;
 }
 
+static char* get_next_line(reader_state_t* state) {
+    char* tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
+    if(!tmp) return NULL;
+
+    state->next_char = tmp;
+    return tmp;
+}
+
 static void skip_whitespace(reader_state_t* state) {
     while(isspace(*state->next_char)) state->next_char++;
 }
@@ -181,24 +197,16 @@ static cell is_eof(reader_state_t* fp) {
     return *fp->next_char=='\0' && feof(fp->stream);
 }
 
-static char* get_next_line(reader_state_t* state) {
-    char* tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
-    if(!tmp) return NULL;
-
-    state->next_char = tmp;
-    return tmp;
-}
-
 // static char *prompt_line(const char *prompt, reader_state_t *state) {}
 
 static int read_key(reader_state_t* state) { // todo: ??
-    if(*state->next_char == '\0') if(!read_next_line(state)) return -1;
+    if(*state->next_char == '\0') if(!get_next_line(state)) return -1;
 
     return *state->next_char++;
 }
 
-static char* read_word(reader_state_t* state, char* tobuf) {
-    char* buf = tobuf;
+static char* read_word(reader_state_t* state, char* tobuf) { // todo: it's more like buffer_word.. or load_word
+    char* buf = tobuf; // charbuf?
 
     // skip whitespace first
     skipws:
@@ -206,12 +214,12 @@ static char* read_word(reader_state_t* state, char* tobuf) {
 
     // buffer exhausted? fill and reskip whitespace
     if(*state->next_char == '\0') {
-        if(!read_next_line(state)) return NULL;
+        if(!get_next_line(state)) return NULL;
         goto skipws; 
     }
 
     // copy until next whitespace
-    while(*state->next_char!='\0' && !isspace(*state->next_char)) {
+    while(*state->next_char != '\0' && !isspace(*state->next_char)) {
         *buf++ = *state->next_char++;
     }
     state->next_char++;
@@ -320,4 +328,25 @@ int main() {
     free(here0);
 
     return 0; 
+}
+
+static void print_memory_stats() {
+    // Calculate everything in bytes first
+    uintptr_t base = (uintptr_t)here0;
+    uintptr_t current = (uintptr_t)here;
+    uintptr_t used_bytes = current - base;
+    uintptr_t total_bytes = here_size;
+
+    // Now calculate in cells (your fundamental unit)
+    size_t cell_size = sizeof(cell);
+    uintptr_t used_cells = used_bytes / cell_size;
+    uintptr_t total_cells = total_bytes / cell_size;
+
+    printf("Memory Block: %p -> %p\n", here0, (void*)(base + total_bytes));
+    printf("Used:  %6lu bytes / %6lu cells\n", used_bytes, used_cells);
+    printf("Free:  %6lu bytes / %6lu cells\n", total_bytes - used_bytes, total_cells - used_cells);
+    printf("Total: %6lu bytes / %6lu cells\n", total_bytes, total_cells);
+
+    // Print the current 'here' as an offset from the base
+    printf("Current 'here' offset: %lu bytes / %lu cells\n", used_bytes, used_cells);
 }

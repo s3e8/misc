@@ -20,6 +20,14 @@ typedef struct audio_buffer_t
     
 // }
 
+audio_buffer_t* new_audio_buffer();
+audio_buffer_t* audio_buffer_init()
+{
+
+}
+
+// data_source api:
+
 void audio_callback()
 {
     
