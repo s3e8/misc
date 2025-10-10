@@ -3,7 +3,8 @@
         "sqlite3.h": "c",
         "stdlib.h": "c",
         "cerrno": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "string.h": "c"
     },
     "makefile.configureOnOpen": true
 }
