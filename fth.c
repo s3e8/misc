@@ -97,7 +97,7 @@ void init_reader_state(reader_state_t* state, char* linebuf, cell linebuf_size, 
 //     }
 // }
 
-static char* get_next_line(reader_state_t* state) {
+char* get_next_line(reader_state_t* state) {
     char* tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
     if(!tmp) return NULL;
 

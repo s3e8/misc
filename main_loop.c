@@ -67,14 +67,17 @@ int main()
         printf("fth> ");
         fflush(stdout);
 
-        char* word = read_word(&reader, wordbuf);
-        if (word == NULL) break;
+        if (get_next_line(&reader) == NULL) break;
 
-        if (strlen(word) > 0)
+        while (read_word(&reader, wordbuf) != NULL)
         {
-            printf("Got word: %s\n", word);
-            // fth_interpret_word(word, &thread);
+            if (strlen(wordbuf) > 0)
+            {
+                printf("Got word: %s\n", wordbuf);
+                // fth_interpret_word(word, &thread);
+            }
         }
+
         // fgets(,, stdin);
         // interprets
         // sets

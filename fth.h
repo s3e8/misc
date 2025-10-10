@@ -107,7 +107,7 @@ reader_state_t*     reader_open_file(reader_state_t* reader, char* fname);
 static void         skip_whitespace(reader_state_t* state);
 static cell         is_eol(reader_state_t* state);
 static cell         is_eof(reader_state_t* fp);
-static char*        get_next_line(reader_state_t* state);
+extern char*        get_next_line(reader_state_t* state);
 // prompt_line?
 static int          read_key(reader_state_t* state); // todo: wtf does this do? ... or WHY, actually
 extern char*        read_word(reader_state_t* state, char* tobuf); // todo: it's more like load_word_into_buffer
