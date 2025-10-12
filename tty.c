@@ -1,10 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
 #include <termios.h>
+#include <unistd.h>
 
 
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -15,8 +16,15 @@ struct tty_cfg
     int term_cols;
     struct termios termios_cfg;
 };
-
 struct tty_cfg tty;
+
+/* append buffer */
+struct abuf
+{
+    char* buf;
+    int  len;
+};
+#define ABUF_INIT {NULL, 0}
 
 
 /* terminal */
@@ -27,8 +35,11 @@ char tty_read_key();
 int  tty_get_cursor_position(int* rows, int* cols);
 int  tty_get_window_size(int* rows, int* cols);
 void tty_process_keypress();
+/* append buffer */
+void abuf_append(struct abuf* abuf, const char* s, int len);
+void abuf_free(struct abuf* abuf);
 /* output */
-void tty_draw_rows();
+void tty_draw_rows(struct abuf* abuf);
 void tty_refresh_screen();
 /* init */
 void tty_init();
@@ -148,27 +159,44 @@ void tty_process_keypress() {
     }
 }
 
+/* append buffer */
+void abuf_append(struct abuf* abuf, const char* s, int len) {
+    char* new = realloc(abuf->buf, abuf->len + len);
+    if (new == NULL) return;
+
+    memcpy(&new[abuf->len], s, len);
+    abuf->buf  = new;
+    abuf->len += len;
+}
+
+void abuf_free(struct abuf* abuf) {
+    free(abuf->buf);
+}
+
 /* output */
-void tty_draw_rows() {
+void tty_draw_rows(struct abuf* abuf) {
     int y;
     for (y = 0; y < tty.term_rows; y++)
     {
-        write(STDOUT_FILENO, "~", 1);
+        abuf_append(abuf, "~", 1);
 
         if (y < tty.term_rows - 1) 
         {
-            write(STDOUT_FILENO, "\r\n", 2);
+            abuf_append(abuf, "\r\n", 2);
         }
     }
 }
 
 void tty_refresh_screen() {
-    write(STDOUT_FILENO, "\x1b[2J", 4); // 
-    write(STDOUT_FILENO, "\x1b[H",  3); //
+    struct abuf abuf = ABUF_INIT;
 
-    tty_draw_rows();                    // 
+    abuf_append(&abuf, "\x1b[2J",   4); // 
+    abuf_append(&abuf, "\x1b[H",    3); //
+    tty_draw_rows(&abuf);               // 
+    abuf_append(&abuf, "\x1b[H",    3); //
 
-    write(STDOUT_FILENO, "\x1b[H",  3); //
+    write(STDOUT_FILENO, abuf.buf, abuf.len);
+    abuf_free(&abuf);
 }
 
 /* init */

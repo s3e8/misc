@@ -16,7 +16,8 @@ how to block less for input?
 - [ ] forget
 - [ ] 
 
-
+## tty todo:
+  literate scripting for tracker engine... ``` means switch to blocks maybe? hm idk
 
 
 nice-to-haves:
