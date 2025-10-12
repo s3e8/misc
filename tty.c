@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -28,13 +29,21 @@ enum tty_key
     END_KEY
 };
 
+typedef struct tty_rowbuf_t
+{
+    int   length; // todo: rename to length?
+    char* chars;
+} tty_rowbuf_t;
+
 struct tty_cfg
 {
-    int cx; // horizontal   (x-axis)
-    int cy; // vertical     (y-axis)
-    int term_rows;
-    int term_cols;
-    struct termios termios_cfg;
+    int             cx; // horizontal   (x-axis ... obviously)
+    int             cy; // vertical     (y-axis)
+    int             term_rows;
+    int             term_cols;
+    int             nrows;
+    tty_rowbuf_t    row;
+    struct termios  termios_cfg;
 };
 struct tty_cfg tty;
 
@@ -63,6 +72,8 @@ void tty_refresh_screen();
 /* input */
 void tty_move_cursor(int key);
 void tty_process_keypress();
+/* file i/o */
+void tty_open();
 /* init */
 void tty_init();
 
@@ -218,6 +229,18 @@ int tty_get_window_size(int* rows, int* cols) {
     }
 }
 
+/* file i/o */
+void tty_open() {
+    char*   linebuf     = "Hello, world!";
+    ssize_t linebuf_len = 13;
+
+    tty.row.length  = linebuf_len;
+    tty.row.chars   = malloc(linebuf_len + 1);
+    memcpy(tty.row.chars, linebuf, linebuf_len);
+    tty.row.chars[linebuf_len] = '\0';
+    tty.nrows = 1;
+}
+
 /* append buffer */
 void abuf_append(struct abuf* abuf, const char* s, int len) {
     char* new = realloc(abuf->buf, abuf->len + len);
@@ -237,26 +260,35 @@ void tty_draw_rows(struct abuf* abuf) {
     int y;
     for (y = 0; y < tty.term_rows; y++)
     {
-        if (y == tty.term_rows / 3)
+        if (y >= tty.nrows)
         {
-            char greet[80];
-            int greet_length = snprintf(greet, sizeof(greet), "TTY editor -- version %s", TTY_VERSION);
-            // "Press any button to continue..."
-            // trkr options, etc
-
-            if (greet_length > tty.term_cols) greet_length = tty.term_cols;
-
-            int padding = (tty.term_cols - greet_length) / 2;
-            if (padding)
+            if (y == tty.term_rows / 3)
             {
-                abuf_append(abuf, "~", 1);
-                padding--;
+                char greet[80];
+                int greet_length = snprintf(greet, sizeof(greet), "TTY editor -- version %s", TTY_VERSION);
+                // "Press any button to continue..."
+                // trkr options, etc
+
+                if (greet_length > tty.term_cols) greet_length = tty.term_cols;
+
+                int padding = (tty.term_cols - greet_length) / 2;
+                if (padding)
+                {
+                    abuf_append(abuf, "~", 1);
+                    padding--;
+                }
+                while (padding--) abuf_append(abuf, " ", 1);
+                abuf_append(abuf, greet, greet_length);
             }
-            while (padding--) abuf_append(abuf, " ", 1);
-            abuf_append(abuf, greet, greet_length);
+            else {
+                abuf_append(abuf, "~", 1);
+            }
         }
         else {
-            abuf_append(abuf, "~", 1);
+            int len = tty.row.length;
+            if (len > tty.term_cols) len = tty.term_cols;
+
+            abuf_append(abuf, tty.row.chars, len);
         }
 
         abuf_append(abuf, "\x1b[K", 3);      // clear one line
@@ -342,8 +374,9 @@ void tty_process_keypress() {
 
 /* init */
 void tty_init() {
-    tty.cx = 0;
-    tty.cy = 0;
+    tty.cx      = 0;
+    tty.cy      = 0;
+    tty.nrows   = 0;
 
     if (tty_get_window_size(&tty.term_rows, &tty.term_cols) == -1) tty_die("tty_get_window_size");
 }
@@ -352,6 +385,7 @@ int main()
 {
     tty_enable_raw_mode();
     tty_init();
+    tty_open();
 
     while (1)
     {
