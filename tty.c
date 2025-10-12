@@ -16,6 +16,7 @@ void tty_die(const char* s);
 char tty_read_key();
 void tty_process_keypress();
 /* output */
+void tty_draw_rows();
 void tty_refresh_screen();
 
 void tty_enable_raw_mode() {
@@ -90,8 +91,21 @@ void tty_process_keypress() {
     }
 }
 
+/* output */
+void tty_draw_rows() {
+    int y;
+    for (y = 0; y < 5; y++)
+    {
+        write(STDOUT_FILENO, "~\r\n", 3);
+    }
+}
+
 void tty_refresh_screen() {
     write(STDOUT_FILENO, "\x1b[2J", 4); // 
+    write(STDOUT_FILENO, "\x1b[H",  3); //
+
+    tty_draw_rows();                    // 
+
     write(STDOUT_FILENO, "\x1b[H",  3); //
 }
 
