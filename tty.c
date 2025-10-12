@@ -16,7 +16,10 @@ enum tty_key
     ARROW_LEFT = 1000,
     ARROW_RIGHT,
     ARROW_UP,
-    ARROW_DOWN
+    ARROW_DOWN,
+    // 
+    PAGE_UP,    // <esc>[5~
+    PAGE_DOWN   // <esc>[6~
 };
 
 struct tty_cfg
@@ -120,17 +123,32 @@ int tty_read_key() {
     {
         char seq[3];
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b'; // ?
-        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b'; // ?
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b'; // ?        
 
         if (seq[0] == '[')
         {
-            switch (seq[1])
+            if (seq[1] >= '0' && seq[1] <= 9)
             {
-                case 'A': return ARROW_UP;
-                case 'B': return ARROW_DOWN;
-                case 'C': return ARROW_RIGHT;
-                case 'D': return ARROW_LEFT;
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+                if (seq[2] == '~')
+                {
+                    switch (seq[1])
+                    {
+                        case '5': return PAGE_UP;
+                        case '6': return PAGE_DOWN;
+                    }
+                } 
             }
+            else {
+                switch (seq[1])
+                {
+                    case 'A': return ARROW_UP;
+                    case 'B': return ARROW_DOWN;
+                    case 'C': return ARROW_RIGHT;
+                    case 'D': return ARROW_LEFT;
+                }
+            }
+            
         }
 
         return '\x1b';
@@ -252,16 +270,16 @@ void tty_move_cursor(int key) {
     switch (key)
     {
         case ARROW_LEFT:
-            tty.cx--;
+            if (tty.cx != 0) tty.cx--;
             break;
         case ARROW_RIGHT:
-            tty.cx++;
+            if (tty.cx != tty.term_cols - 1) tty.cx++; // todo: should be if cx < cols - 1?
             break;
         case ARROW_UP:
-            tty.cy--;
+            if (tty.cy != 0) tty.cy--;
             break;
         case ARROW_DOWN:
-            tty.cy++;
+            if (tty.cy != tty.term_rows - 1) tty.cy++; // todo: should be if cy < rows - 1?
             break;
     }
 }
@@ -275,6 +293,14 @@ void tty_process_keypress() {
             write(STDOUT_FILENO, "\x1b[2J", 4); // what?
             write(STDOUT_FILENO, "\x1b[H",  3); // what?
             exit(0);
+            break;
+
+        case PAGE_UP:
+        case PAGE_DOWN:
+            {
+                int times = tty.term_rows;
+                while (times--) tty_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            }
             break;
         
         case ARROW_UP:
