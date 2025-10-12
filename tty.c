@@ -19,7 +19,11 @@ enum tty_key
     ARROW_DOWN,
     // 
     PAGE_UP,    // <esc>[5~
-    PAGE_DOWN   // <esc>[6~
+    PAGE_DOWN,  // <esc>[6~
+    // Unlike the previous keys, there are many different escape sequences that could be sent by these keys, depending on your OS, or your terminal emulator. 
+    // The Home key could be sent as <esc>[1~, <esc>[7~, <esc>[H, or <esc>OH. Similarly, the End key could be sent as <esc>[4~, <esc>[8~, <esc>[F, or <esc>OF.
+    HOME_KEY,
+    END_KEY
 };
 
 struct tty_cfg
@@ -134,8 +138,12 @@ int tty_read_key() {
                 {
                     switch (seq[1])
                     {
+                        case '1': return HOME_KEY;
+                        case '4': return END_KEY;
                         case '5': return PAGE_UP;
                         case '6': return PAGE_DOWN;
+                        case '7': return HOME_KEY;
+                        case '8': return END_KEY;
                     }
                 } 
             }
@@ -146,9 +154,18 @@ int tty_read_key() {
                     case 'B': return ARROW_DOWN;
                     case 'C': return ARROW_RIGHT;
                     case 'D': return ARROW_LEFT;
+                    case 'H': return HOME_KEY;
+                    case 'F': return END_KEY;
                 }
+            }            
+        }
+        else if (seq[0] == '0') 
+        {
+            switch (seq[1])
+            {
+                case 'H': return HOME_KEY;
+                case 'F': return END_KEY;
             }
-            
         }
 
         return '\x1b';
@@ -294,6 +311,14 @@ void tty_process_keypress() {
             write(STDOUT_FILENO, "\x1b[H",  3); // what?
             exit(0);
             break;
+
+        case HOME_KEY:
+            tty.cx = 0;
+            break;
+        
+            case END_KEY:
+                tty.cx = tty.term_cols - 1;
+                break;
 
         case PAGE_UP:
         case PAGE_DOWN:
