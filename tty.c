@@ -253,12 +253,12 @@ void tty_open(char* filename) {
     FILE* fp = fopen(filename, "r");
     if (!fp) tty_die("fopen");
 
-
+    // todo: it's not really a linebuf... but the input string/line
     char*   linebuf     = NULL;
     size_t  linebuf_cap = 0; // ?
-    ssize_t linebuf_len = 13;
+    ssize_t linebuf_len;
 
-    while (getline(&linebuf, &linebuf_cap, fp) != -1)
+    while ((linebuf_len = getline(&linebuf, &linebuf_cap, fp)) != -1)
     {
         while (linebuf_len > 0 && (linebuf[linebuf_len - 1] == '\n' || linebuf[linebuf_len - 1] == '\r'))
         {
