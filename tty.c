@@ -13,6 +13,8 @@
 
 struct tty_cfg
 {
+    int cx; // horizontal   (x-axis)
+    int cy; // vertical     (y-axis)
     int term_rows;
     int term_cols;
     struct termios termios_cfg;
@@ -35,13 +37,15 @@ void tty_die(const char* s);
 char tty_read_key();
 int  tty_get_cursor_position(int* rows, int* cols);
 int  tty_get_window_size(int* rows, int* cols);
-void tty_process_keypress();
 /* append buffer */
 void abuf_append(struct abuf* abuf, const char* s, int len);
 void abuf_free(struct abuf* abuf);
 /* output */
 void tty_draw_rows(struct abuf* abuf);
 void tty_refresh_screen();
+/* input */
+void tty_move_cursor(char key);
+void tty_process_keypress();
 /* init */
 void tty_init();
 
@@ -147,19 +151,6 @@ int tty_get_window_size(int* rows, int* cols) {
     }
 }
 
-void tty_process_keypress() {
-    char c = tty_read_key();
-
-    switch (c)
-    {
-        case CTRL_KEY('q'):
-            write(STDOUT_FILENO, "\x1b[2J", 4);
-            write(STDOUT_FILENO, "\x1b[H",  3);
-            exit(0);
-            break;
-    }
-}
-
 /* append buffer */
 void abuf_append(struct abuf* abuf, const char* s, int len) {
     char* new = realloc(abuf->buf, abuf->len + len);
@@ -212,19 +203,65 @@ void tty_draw_rows(struct abuf* abuf) {
 void tty_refresh_screen() {
     struct abuf abuf = ABUF_INIT;
 
-    abuf_append(&abuf,  "\x1b[?25l", 6);    // hide cursor
+    abuf_append(&abuf,  "\x1b[?25l",    6); // hide cursor
     // abuf_append(&abuf,  "\x1b[2J",   4); // clear entire screen
-    abuf_append(&abuf,  "\x1b[H",    3);    //
+    abuf_append(&abuf,  "\x1b[H",       3); //
     tty_draw_rows(&abuf);                   // 
-    abuf_append(&abuf,  "\x1b[H",    3);    //
-    abuf_append(&abuf,  "\x1b[?25h", 6);    // show cursor
+
+    // move the cursor to the position stored in tty.cx and tty.cy
+    char cursor_buf[32];
+    snprintf(cursor_buf, sizeof(cursor_buf), "\x1b[%d;%dH", tty.cy + 1, tty.cx + 1);
+    abuf_append(&abuf, cursor_buf, strlen(cursor_buf));
+    abuf_append(&abuf, "\x1b[?25h", 6);    // show cursor
 
     write(STDOUT_FILENO, abuf.buf, abuf.len);
     abuf_free(&abuf);
 }
 
+/* input */
+void tty_move_cursor(char key) {
+    switch (key)
+    {
+        case 'a':
+            tty.cx--;
+            break;
+        case 'd':
+            tty.cx++;
+            break;
+        case 'w':
+            tty.cy--;
+            break;
+        case 's':
+            tty.cy++;
+            break;
+    }
+}
+
+void tty_process_keypress() {
+    char c = tty_read_key();
+
+    switch (c)
+    {
+        case CTRL_KEY('q'):
+            write(STDOUT_FILENO, "\x1b[2J", 4); // what?
+            write(STDOUT_FILENO, "\x1b[H",  3); // what?
+            exit(0);
+            break;
+        
+        case 'w':
+        case 'a':
+        case 's':
+        case 'd':
+            tty_move_cursor(c);
+            break;
+    }
+}
+
 /* init */
 void tty_init() {
+    tty.cx = 0;
+    tty.cy = 0;
+
     if (tty_get_window_size(&tty.term_rows, &tty.term_cols) == -1) tty_die("tty_get_window_size");
 }
 
