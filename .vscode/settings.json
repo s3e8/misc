@@ -5,7 +5,8 @@
         "cerrno": "c",
         "stdint.h": "c",
         "string.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "termios.h": "c"
     },
     "makefile.configureOnOpen": true
 }

@@ -1,29 +1,45 @@
-#include <ctype.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <termios.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <errno.h>
+#include <termios.h>
+
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-struct termios termios_cfg;
+struct tty_cfg
+{
+    int term_rows;
+    int term_cols;
+    struct termios termios_cfg;
+};
+
+struct tty_cfg tty;
+
 
 /* terminal */
 void tty_enable_raw_mode();
 void tty_disable_raw_mode();
 void tty_die(const char* s);
 char tty_read_key();
+int  tty_get_cursor_position(int* rows, int* cols);
+int  tty_get_window_size(int* rows, int* cols);
 void tty_process_keypress();
 /* output */
 void tty_draw_rows();
 void tty_refresh_screen();
+/* init */
+void tty_init();
+
+
 
 void tty_enable_raw_mode() {
-    if (tcgetattr(STDIN_FILENO, &termios_cfg) == -1) tty_die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &tty.termios_cfg) == -1) tty_die("tcgetattr");
     atexit(tty_disable_raw_mode);
 
-    struct termios raw = termios_cfg;
+    struct termios raw = tty.termios_cfg;
     raw.c_iflag             /* input flags */
         &= ~(
             BRKINT  |       // old conventional stuff
@@ -55,7 +71,7 @@ void tty_enable_raw_mode() {
 }
 
 void tty_disable_raw_mode() {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &termios_cfg) == -1) tty_die("tcsetattr");
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &tty.termios_cfg) == -1) tty_die("tcsetattr");
 }
 
 void tty_die(const char* s) {
@@ -63,6 +79,7 @@ void tty_die(const char* s) {
     write(STDOUT_FILENO, "\x1b[H",  3);
 
     perror(s);
+    write(STDOUT_FILENO, "\r",  1);
     exit(1);
 }
 
@@ -76,6 +93,46 @@ char tty_read_key() {
     }
 
     return c;
+}
+
+int tty_get_cursor_position(int* rows, int* cols) {
+    char buf[32];
+    unsigned int i = 0;
+
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+
+    while (i < sizeof(buf) - 1)
+    {
+        if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+        if (buf[i] == 'R') break;
+        i++;
+    }
+    buf[i] = '\0';
+
+    if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+    if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
+
+    return 0;
+}
+
+int tty_get_window_size(int* rows, int* cols) {
+    struct winsize ws;
+
+    // todo: when this errors "if (1 || ...)", the error message on die is "tty_get_window_size: Success" .. oh nvm, cause it's a fake failed test...
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) //  apparently == 0 a possible erroneous outcome
+    {
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        tty_get_cursor_position(rows, cols);
+
+        return -1;
+    }
+    else 
+    {
+        *rows = ws.ws_row; // does this * dereference the pointer, so that it's changing the value and not the address itself?
+        *cols = ws.ws_col;
+
+        return 0;
+    }
 }
 
 void tty_process_keypress() {
@@ -94,9 +151,14 @@ void tty_process_keypress() {
 /* output */
 void tty_draw_rows() {
     int y;
-    for (y = 0; y < 5; y++)
+    for (y = 0; y < tty.term_rows; y++)
     {
-        write(STDOUT_FILENO, "~\r\n", 3);
+        write(STDOUT_FILENO, "~", 1);
+
+        if (y < tty.term_rows - 1) 
+        {
+            write(STDOUT_FILENO, "\r\n", 2);
+        }
     }
 }
 
@@ -109,9 +171,15 @@ void tty_refresh_screen() {
     write(STDOUT_FILENO, "\x1b[H",  3); //
 }
 
+/* init */
+void tty_init() {
+    if (tty_get_window_size(&tty.term_rows, &tty.term_rows) == -1) tty_die("tty_get_window_size");
+}
+
 int main()
 {
     tty_enable_raw_mode();
+    tty_init();
 
     while (1)
     {
