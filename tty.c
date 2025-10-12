@@ -7,6 +7,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#define TTY_VERSION "0.0.1"
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -178,8 +179,29 @@ void tty_draw_rows(struct abuf* abuf) {
     int y;
     for (y = 0; y < tty.term_rows; y++)
     {
-        abuf_append(abuf, "~", 1);
+        if (y == tty.term_rows / 3)
+        {
+            char greet[80];
+            int greet_length = snprintf(greet, sizeof(greet), "TTY editor -- version %s", TTY_VERSION);
+            // "Press any button to continue..."
+            // trkr options, etc
 
+            if (greet_length > tty.term_cols) greet_length = tty.term_cols;
+
+            int padding = (tty.term_cols - greet_length) / 2;
+            if (padding)
+            {
+                abuf_append(abuf, "~", 1);
+                padding--;
+            }
+            while (padding--) abuf_append(abuf, " ", 1);
+            abuf_append(abuf, greet, greet_length);
+        }
+        else {
+            abuf_append(abuf, "~", 1);
+        }
+
+        abuf_append(abuf, "\x1b[K", 3);      // clear one line
         if (y < tty.term_rows - 1) 
         {
             abuf_append(abuf, "\r\n", 2);
@@ -190,10 +212,12 @@ void tty_draw_rows(struct abuf* abuf) {
 void tty_refresh_screen() {
     struct abuf abuf = ABUF_INIT;
 
-    abuf_append(&abuf, "\x1b[2J",   4); // 
-    abuf_append(&abuf, "\x1b[H",    3); //
-    tty_draw_rows(&abuf);               // 
-    abuf_append(&abuf, "\x1b[H",    3); //
+    abuf_append(&abuf,  "\x1b[?25l", 6);    // hide cursor
+    // abuf_append(&abuf,  "\x1b[2J",   4); // clear entire screen
+    abuf_append(&abuf,  "\x1b[H",    3);    //
+    tty_draw_rows(&abuf);                   // 
+    abuf_append(&abuf,  "\x1b[H",    3);    //
+    abuf_append(&abuf,  "\x1b[?25h", 6);    // show cursor
 
     write(STDOUT_FILENO, abuf.buf, abuf.len);
     abuf_free(&abuf);
@@ -201,7 +225,7 @@ void tty_refresh_screen() {
 
 /* init */
 void tty_init() {
-    if (tty_get_window_size(&tty.term_rows, &tty.term_rows) == -1) tty_die("tty_get_window_size");
+    if (tty_get_window_size(&tty.term_rows, &tty.term_cols) == -1) tty_die("tty_get_window_size");
 }
 
 int main()
@@ -214,15 +238,6 @@ int main()
         tty_refresh_screen();
         tty_process_keypress();
     }
-    // while (1) {
-    //     char c = '\0';  // todo: do we have to initialize this every time?
-
-    //     if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) tty_die("read");
-    //     if (iscntrl(c))             printf("%d\r\n", c);
-    //     else                        printf("%d ('%c')\r\n", c, c);
-    //     // if (c == CTRL_KEY('q'))     break;
-    //     if (c == 'q')               break; // temporary only for codespaces
-    // }
 
     return 0;
 }
