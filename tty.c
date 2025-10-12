@@ -1,3 +1,7 @@
+#define _DEFAULT_SOURCE // "feature test macros" - https://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -73,7 +77,7 @@ void tty_refresh_screen();
 void tty_move_cursor(int key);
 void tty_process_keypress();
 /* file i/o */
-void tty_open();
+void tty_open(char* filename);
 /* init */
 void tty_init();
 
@@ -230,15 +234,32 @@ int tty_get_window_size(int* rows, int* cols) {
 }
 
 /* file i/o */
-void tty_open() {
-    char*   linebuf     = "Hello, world!";
+void tty_open(char* filename) {
+    FILE* fp = fopen(filename, "r");
+    if (!fp) tty_die("fopen");
+
+
+    char*   linebuf     = NULL;
+    size_t  linebuf_cap = 0; // ?
     ssize_t linebuf_len = 13;
 
-    tty.row.length  = linebuf_len;
-    tty.row.chars   = malloc(linebuf_len + 1);
-    memcpy(tty.row.chars, linebuf, linebuf_len);
-    tty.row.chars[linebuf_len] = '\0';
-    tty.nrows = 1;
+    linebuf_len = getline(&linebuf, &linebuf_cap, fp);
+    if (linebuf_len != -1)
+    {
+        while (linebuf_len > 0 && (linebuf[linebuf_len - 1] == '\n' || linebuf[linebuf_len - 1] == '\r'))
+        {
+            linebuf_len--;
+        }
+
+        tty.row.length  = linebuf_len;
+        tty.row.chars   = malloc(linebuf_len + 1);
+        memcpy(tty.row.chars, linebuf, linebuf_len);
+        tty.row.chars[linebuf_len] = '\0';
+        tty.nrows = 1;
+    }
+
+    free(linebuf);
+    fclose(fp);
 }
 
 /* append buffer */
@@ -262,7 +283,7 @@ void tty_draw_rows(struct abuf* abuf) {
     {
         if (y >= tty.nrows)
         {
-            if (y == tty.term_rows / 3)
+            if (tty.nrows == 0 && y == tty.term_rows / 3)
             {
                 char greet[80];
                 int greet_length = snprintf(greet, sizeof(greet), "TTY editor -- version %s", TTY_VERSION);
@@ -381,11 +402,15 @@ void tty_init() {
     if (tty_get_window_size(&tty.term_rows, &tty.term_cols) == -1) tty_die("tty_get_window_size");
 }
 
-int main()
+int main(int argc, char** argv)
 {
     tty_enable_raw_mode();
     tty_init();
-    tty_open();
+    if (argc > 2)
+    {
+        tty_open(argv[1]);
+    }
+    
 
     while (1)
     {
