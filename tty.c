@@ -46,7 +46,7 @@ struct tty_cfg
     int             term_rows;
     int             term_cols;
     int             nrows;
-    tty_rowbuf_t    row;
+    tty_rowbuf_t*   row;
     struct termios  termios_cfg;
 };
 struct tty_cfg tty;
@@ -76,6 +76,8 @@ void tty_refresh_screen();
 /* input */
 void tty_move_cursor(int key);
 void tty_process_keypress();
+/* row operations */
+void tty_add_row(char* chars, size_t len);
 /* file i/o */
 void tty_open(char* filename);
 /* init */
@@ -233,6 +235,19 @@ int tty_get_window_size(int* rows, int* cols) {
     }
 }
 
+void tty_add_row(char* chars, size_t len) {
+    tty.row = realloc(tty.row, sizeof(tty_rowbuf_t) * (tty.nrows + 1));
+
+    int at = tty.nrows;
+
+
+    tty.row[at].length = len;
+    tty.row[at].chars  = malloc(len + 1);
+    memcpy(tty.row[at].chars, chars, len);
+    tty.row[at].chars[len] = '\0';
+    tty.nrows++; 
+}
+
 /* file i/o */
 void tty_open(char* filename) {
     FILE* fp = fopen(filename, "r");
@@ -243,21 +258,14 @@ void tty_open(char* filename) {
     size_t  linebuf_cap = 0; // ?
     ssize_t linebuf_len = 13;
 
-    linebuf_len = getline(&linebuf, &linebuf_cap, fp);
-    if (linebuf_len != -1)
+    while (getline(&linebuf, &linebuf_cap, fp) != -1)
     {
         while (linebuf_len > 0 && (linebuf[linebuf_len - 1] == '\n' || linebuf[linebuf_len - 1] == '\r'))
         {
             linebuf_len--;
         }
-
-        tty.row.length  = linebuf_len;
-        tty.row.chars   = malloc(linebuf_len + 1);
-        memcpy(tty.row.chars, linebuf, linebuf_len);
-        tty.row.chars[linebuf_len] = '\0';
-        tty.nrows = 1;
+        tty_add_row(linebuf, linebuf_len);
     }
-
     free(linebuf);
     fclose(fp);
 }
@@ -306,10 +314,10 @@ void tty_draw_rows(struct abuf* abuf) {
             }
         }
         else {
-            int len = tty.row.length;
+            int len = tty.row[y].length;
             if (len > tty.term_cols) len = tty.term_cols;
 
-            abuf_append(abuf, tty.row.chars, len);
+            abuf_append(abuf, tty.row[y].chars, len);
         }
 
         abuf_append(abuf, "\x1b[K", 3);      // clear one line
@@ -398,6 +406,7 @@ void tty_init() {
     tty.cx      = 0;
     tty.cy      = 0;
     tty.nrows   = 0;
+    tty.row     = NULL;
 
     if (tty_get_window_size(&tty.term_rows, &tty.term_cols) == -1) tty_die("tty_get_window_size");
 }
