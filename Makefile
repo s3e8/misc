@@ -14,3 +14,6 @@ fth: fth.c
 
 trkr: trkr.c
 	$(CC) 	trkr.c 	-o 	./bin/trkr 	-Wall -Wextra -pedantic -std=c99
+
+clean: 
+	rm ./bin/tty
