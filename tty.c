@@ -11,6 +11,14 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+enum tty_key
+{
+    ARROW_LEFT = 1000,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN
+};
+
 struct tty_cfg
 {
     int cx; // horizontal   (x-axis)
@@ -34,7 +42,7 @@ struct abuf
 void tty_enable_raw_mode();
 void tty_disable_raw_mode();
 void tty_die(const char* s);
-char tty_read_key();
+int tty_read_key();
 int  tty_get_cursor_position(int* rows, int* cols);
 int  tty_get_window_size(int* rows, int* cols);
 /* append buffer */
@@ -44,7 +52,7 @@ void abuf_free(struct abuf* abuf);
 void tty_draw_rows(struct abuf* abuf);
 void tty_refresh_screen();
 /* input */
-void tty_move_cursor(char key);
+void tty_move_cursor(int key);
 void tty_process_keypress();
 /* init */
 void tty_init();
@@ -99,7 +107,7 @@ void tty_die(const char* s) {
     exit(1);
 }
 
-char tty_read_key() {
+int tty_read_key() {
     int  nread;
     char c; // todo: should we just pass this in from the global stack? maybe itll just be a forth thing later
 
@@ -108,7 +116,28 @@ char tty_read_key() {
         if (nread == -1 && errno != EAGAIN) tty_die("read");
     }
 
-    return c;
+    if (c == '\x1b')
+    {
+        char seq[3];
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b'; // ?
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b'; // ?
+
+        if (seq[0] == '[')
+        {
+            switch (seq[1])
+            {
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+            }
+        }
+
+        return '\x1b';
+    }
+    else {
+        return c;
+    }
 }
 
 int tty_get_cursor_position(int* rows, int* cols) {
@@ -219,26 +248,26 @@ void tty_refresh_screen() {
 }
 
 /* input */
-void tty_move_cursor(char key) {
+void tty_move_cursor(int key) {
     switch (key)
     {
-        case 'a':
+        case ARROW_LEFT:
             tty.cx--;
             break;
-        case 'd':
+        case ARROW_RIGHT:
             tty.cx++;
             break;
-        case 'w':
+        case ARROW_UP:
             tty.cy--;
             break;
-        case 's':
+        case ARROW_DOWN:
             tty.cy++;
             break;
     }
 }
 
 void tty_process_keypress() {
-    char c = tty_read_key();
+    int c = tty_read_key();
 
     switch (c)
     {
@@ -248,10 +277,10 @@ void tty_process_keypress() {
             exit(0);
             break;
         
-        case 'w':
-        case 'a':
-        case 's':
-        case 'd':
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_LEFT:
+        case ARROW_RIGHT:
             tty_move_cursor(c);
             break;
     }
