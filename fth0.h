@@ -23,7 +23,7 @@
 #define FLAG_HIDDEN     BIT(0)
 #define FLAG_IMMED      BIT(1)
 #define FLAG_BUILTIN    BIT(2)
-#define FLAG_HASARG     BIT(3)
+#define FLAG_HASARG     BIT(3) // do we need?
 #define FLAG_INLINE     BIT(4)
 #define FLAG_DEFERRED   BIT(5)
 
