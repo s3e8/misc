@@ -1,5 +1,13 @@
 # misc
 
+## forth todo:
+
+
+## forth words
+- [ ] forget
+- [ ] 
+
+
 compile sqlite with: ```gcc -c lib/sqlite3/sqlite3.c -o lib/sqlite3/sqlite3.o -lpthread -ldl```
 create static lib with: ```ar rcs lib/sqlite3/libsqlite3.a lib/sqlite3/sqlite3.o```
 
@@ -12,9 +20,6 @@ compile all in one go: ```gcc db.c lib/sqlite3/sqlite3.c -o db -lpthread -ldl```
 emacs way to quit
 how to block less for input?
 
-## forth words
-- [ ] forget
-- [ ] 
 
 ## tty todo:
   literate scripting for tracker engine... ``` means switch to blocks maybe? hm idk

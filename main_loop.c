@@ -5,6 +5,10 @@
 #define DATASTACK_SIZE      1024
 #define RETURNSTACK_SIZE    512
 
+void fth_interpret();
+void fth_eval();
+
+
 int main() 
 {
     //* init *// // init forth first, cause it's the config for each //
@@ -29,7 +33,7 @@ int main()
     
     // reader init
     // reader_state_t  stdin_state;
-    char            stdinbuf[1024];
+    char stdinbuf[1024];
     char wordbuf[WORD_NAME_MAX_LENGTH];
     char linebuf[WORD_NAME_MAX_LENGTH]; // todo: why the same len?
     // linebufsize
@@ -74,6 +78,7 @@ int main()
             if (strlen(wordbuf) > 0)
             {
                 printf("Got word: %s\n", wordbuf);
+                eval_word(wordbuf);
                 // fth_interpret_word(word, &thread);
             }
         }

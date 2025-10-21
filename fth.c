@@ -45,6 +45,8 @@ static word_hdr_t* find_word(const char* name) {
         hdr = hdr->next;
     }
 
+    printf("Word: %s, not found\n", name);
+
     return NULL;
 }
 
@@ -176,7 +178,6 @@ static thread_state_t* create_thread(int ds_size, int rs_size, void** entrypoint
 }
 
 static void kill_thread() {}
-
 
 // dbg
 static void test_shit(cell* ds, void*** rs, void*** ip) {
