@@ -14,27 +14,43 @@
 /* the cell type */
 typedef uintptr_t cell;
 
+
+/// Macros ///
 /* function pointers for now */
 #define NEXT() { void (*code)() = (void(*)())*ip++; code(); }
-
 /* Macros to deal with the return stack. */
 #define PUSHRSP(x)  *(--rs) = (void**)(x)   // -- Pre-decrement  store
 #define POPRSP()    *rs++                   // -- Post-increment load
-
 /* the inner interpreter */
 void op_docol();
 #define DOCOL() op_docol();
+// _start
+// cold_start (_cold_start?)
+
+typedef struct word_hdr_t word_hdr_t; 
+typedef struct word_hdr_t {             // todo: change order to match jonesforth?
+    cell                flags;
+    struct word_hdr_t*  next;
+    char                name[WORD_NAME_MAX_LENGTH];
+} word_hdr_t;
 
 // DEFWORD  - .macro defword  name, namelen, flags=0, label             - creates compound words written in Forth itself
-// DEFCODE  - .macro defcode  name, namelen, flags=0, label             - creates primitive words written in native C       // todo: rename to defop?
-// DEFVAR   - .macro defvar   name, namelen, flags=0, label, initial=0  - 
-// DEFCONST - .macro defconst name, namelen, flags=0, label, value      - 
+void defword    (const char* name, cell flags); /* -- .macro defword  name, namelen, flags=0, label             -- creates compound words written in Forth itself    -- */ 
+void defword    (const char* name, cell flags)
+{
 
-typedef struct word_hdr_t word_hdr_t;
-void defword    (const char* name, cell flags); /* -- creates compound words written in Forth itself    -- */ 
-void defcode    (const char* name, cell flags); /* -- creates primitive words written in native C       -- */ 
-void defvar     (const char* name, cell value); /*  */
-void defconst   (const char* name, cell value); /*  */
+}
+
+// DEFCODE  - .macro defcode  name, namelen, flags=0, label             - creates primitive words written in native C       // todo: rename to defop?
+void defcode    (const char* name, cell flags, void* code); /* -- .macro defword  name, namelen, flags=0, label             -- creates primitive words written in native C       -- */ 
+void defcode    (const char* name, cell flags, void*code)
+{
+    
+}
+// DEFVAR   - .macro defvar   name, namelen, flags=0, label, initial=0  - 
+void defvar     (const char* name, cell value); /* -- .macro defvar   name, namelen, flags=0, label, initial=0  -- */
+// DEFCONST - .macro defconst name, namelen, flags=0, label, value      - 
+void defconst   (const char* name, cell value); /* -- .macro defconst name, namelen, flags=0, label, value      -- */ // todo: rename to defop?
 void initwords  ();
 void initcodes  ();
 void initvars   ();

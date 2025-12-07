@@ -30,9 +30,9 @@ void defword(const char* name, cell flags, void* code[], int wordcount)
 // Built-in word helpers
 void defcode(const char* name, cell flags, void* code) 
 {
-    // Create header
     if (!name) name = '\0'; // for creating unnamed words
     
+    // Create header
     word_hdr_t* new = (word_hdr_t*)here;
     here += sizeof(word_hdr_t);
 

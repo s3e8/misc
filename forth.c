@@ -1,0 +1,721 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <ctype.h>
+
+// https://chat.deepseek.com/a/chat/s/2bc2b322-e199-4f4c-b077-af25913a2030
+
+/* cfg */
+#define WORD_NAME_MAX_LENGTH 64
+/* end cfg */
+
+/* the cell type */
+typedef uintptr_t cell;
+
+// #define DEFCODE(name)                   \
+//     void name##_body(void);             \
+//     XT name = (XT)&&name##_entry;       \
+//     void name##_body(void) {            \
+//         name##_entry:;                  \
+//         (void)0  // avoid empty statement warning
+// #define ENDCODE }
+
+// // Usage - clean and foolproof!
+// DEFCODE(dup)
+//     sp++;
+//     stack[sp] = stack[sp-1];
+//     NEXT;
+// ENDCODE
+
+/*
+#define THREADED(...) { __VA_ARGS__, NULL }
+#define CODE_REF(name) (XT)&&name##_entry
+
+"""
+6. Advanced Version with Error Prevention
+c
+
+// Even safer - prevent missing NEXT
+#define DEFCODE(name)                   \
+    void name##_body(void);             \
+    XT name = (XT)&&name##_entry;       \
+    void name##_body(void) {            \
+        _Pragma("GCC diagnostic push")  \
+        _Pragma("GCC diagnostic ignored \"-Wunused-label\"") \
+        name##_entry:;                  \
+        _Pragma("GCC diagnostic pop")   \
+        (void)0
+
+#define ENDCODE _Pragma("GCC error \"Missing NEXT at end of primitive\"") }
+#define NEXT goto *(*ip++); } while(0);  // Force semicolon usage
+"""
+#define ENDCODE _Pragma("GCC error \"Missing NEXT at end of primitive\"") }
+#define NEXT goto *(*ip++); } while(0);  // Force semicolon usage"
+
+ Alternative: Implicit Entry Points
+c
+
+// If you want the body to automatically be the entry
+#define DEFCODE(name)                   \
+    void name##_body(void) {            \
+        _Pragma("GCC diagnostic push")  \
+        _Pragma("GCC diagnostic ignored \"-Wunused-label\"") \
+        name##_entry:;                  \
+        _Pragma("GCC diagnostic pop")   \
+        (void)0;                        \
+    XT name = (XT)&&name##_entry
+
+#define ENDCODE }
+*/
+
+typedef void* XT;
+#define OP(X) ((XT)(X))
+#define EXECUTE(xt) (*(void (*)())(xt))()
+#define NEXT goto *(*ip++)
+// #define LIT(x) (XT)((long)(x)), lit_impl
+
+#define LABEL_ADDR(label) &&label
+#define ENTRY(name) name##_entry
+
+#define INTERPRET(program) do { \
+    XT* ip = program; \
+    while (*ip) EXECUTE(*ip++); \
+} while(0)
+
+#define DEFCODE(name)           \ // todo: rename to DEFPRIM?
+    void name##_impl(void);     \
+    XT name = (XT)name##_impl;  \
+    void name##_impl(void)
+
+#define DEFWORD(...) { __VA_ARGS__, NULL } // todo: rename to DEFSOMTEHINTG
+
+#define WORD(name, ...) XT name[] = DEFWORD(__VA_ARGS__)
+
+// #if DEBUG
+// XT program[] = THREADED(dup, debug_print, swap, debug_print, add);
+// #else
+// XT program[] = THREADED(dup, swap, add);
+// #endif
+
+/*
+
+The NEXT Macro and Pointer Magic
+c
+
+#define NEXT goto *(*ip++)
+
+    ip is an XT* (pointer to pointer)
+
+    ip++ - increment to next instruction (moves pointer forward)
+
+    *ip - dereference to get the XT at current position
+
+    goto *(*ip) - dereference the XT to get the actual code address and jump there
+
+So if:
+c
+
+XT program[] = { &dup_code, &swap_code, &add_code };
+XT* ip = program;  // ip points to &dup_code
+
+NEXT;  // becomes: goto *(*ip++);
+       // *ip gets &dup_code
+       // goto *(&dup_code) jumps to dup_code
+       // ip++ moves to &swap_code
+
+*/
+
+
+/// Dictionary + Helpers ///
+typedef struct word_hdr_t word_hdr_t; 
+typedef struct word_hdr_t {             // todo: change order to match jonesforth?
+    cell                flags;
+    struct word_hdr_t*  next;
+    char                name[WORD_NAME_MAX_LENGTH];
+} word_hdr_t;
+// DEFCODE  - .macro defcode  name, namelen, flags=0, label             - creates primitive words written in native C       // todo: rename to defop?
+void defcode    (const char* name, cell flags, void* code); /* -- .macro defword  name, namelen, flags=0, label             -- creates primitive words written in native C       -- */ 
+void defcode    (const char* name, cell flags, void*code)
+{
+    
+}
+// // DEFWORD  - .macro defword  name, namelen, flags=0, label             - creates compound words written in Forth itself
+// void defword    (const char* name, cell flags); /* -- .macro defword  name, namelen, flags=0, label             -- creates compound words written in Forth itself    -- */ 
+// void defword    (const char* name, cell flags)
+// {
+
+// }
+// // DEFVAR   - .macro defvar   name, namelen, flags=0, label, initial=0  - 
+// void defvar     (const char* name, cell value); /* -- .macro defvar   name, namelen, flags=0, label, initial=0  -- */
+// // DEFCONST - .macro defconst name, namelen, flags=0, label, value      - 
+// void defconst   (const char* name, cell value); /* -- .macro defconst name, namelen, flags=0, label, value      -- */ // todo: rename to defop?
+// void initwords  ();
+// void initcodes  ();
+// void initvars   ();
+// void initconsts ();
+
+// /// Macros ///
+// /* function pointers for now */
+// #define NEXT() { void (*code)() = (void(*)())*ip++; code(); }
+// /* Macros to deal with the return stack. */
+// #define PUSHRSP(x)  *(--rs) = (void**)(x)   // -- Pre-decrement  store
+// #define POPRSP()    *rs++                   // -- Post-increment load
+// /* the inner interpreter */
+// void op_docol();
+// #define DOCOL() op_docol();
+// // _start
+// // cold_start (_cold_start?)
+
+// // F_IMMED      -
+// // F_HIDDEN     -
+// // F_LENMASK    -
+
+// /* ---- DEFCODE - Native Ops ---- */
+// // Stack manipulation
+// void op_drop();
+// void op_swap();
+// void op_dup();
+// void op_over();
+// void op_rot();
+// void op_nrot();
+// void op_twodrop();
+// void op_twodup();
+// void op_twoswap();
+// void op_qdup();
+
+// // Arithmetic
+// void op_incr();
+// void op_decr();
+// void op_incrfour();
+// void op_decrfour();
+// void op_add();
+// void op_sub();
+// void op_mul();
+// void op_divmod();
+
+// // Comparison (signed)
+// void op_equ();
+// void op_nequ();
+// void op_lt();
+// void op_gt();
+// void op_le();
+// void op_ge();
+
+// // Comparison (unsigned/zero-based)
+// void op_zequ();
+// void op_znequ();
+// void op_zlt();
+// void op_zgt();
+// void op_zle();
+// void op_zge();
+
+// // Bitwise operations
+// void op_and();
+// void op_or();
+// void op_xor();
+// void op_invert();
+
+// // Control flow
+// void op_exit();
+// void op_lit();
+
+// // Memory operations
+// void op_store();
+// void op_fetch();
+// void op_addstore();
+// void op_substore();
+// void op_storebyte();
+// void op_fetchbyte();
+
+// // Memory movement
+// void op_ccopy();
+// void op_cmove();
+
+// /* ---- Op Macros ---- */
+// // Stack manipulation
+// #define DROP      op_drop
+// #define SWAP      op_swap  
+// #define DUP       op_dup
+// #define OVER      op_over
+// #define ROT       op_rot
+// #define NROT      op_nrot
+// #define TWODROP   op_twodrop
+// #define TWODUP    op_twodup
+// #define TWOSWAP   op_twoswap
+// #define QDUP      op_qdup
+
+// // Arithmetic
+// #define INCR      op_incr
+// #define DECR      op_decr
+// #define INCRFOUR  op_incrfour
+// #define DECRFOUR  op_decrfour
+// #define ADD       op_add
+// #define SUB       op_sub
+// #define MUL       op_mul
+// #define DIVMOD    op_divmod
+
+// // Comparison (signed)
+// #define EQU       op_equ
+// #define NEQU      op_nequ
+// #define LT        op_lt
+// #define GT        op_gt
+// #define LE        op_le
+// #define GE        op_ge
+
+// // Comparison (unsigned/zero-based)
+// #define ZEQU      op_zequ
+// #define ZNEQU     op_znequ
+// #define ZLT       op_zlt
+// #define ZGT       op_zgt
+// #define ZLE       op_zle
+// #define ZGE       op_zge
+
+// // Bitwise operations
+// #define AND       op_and
+// #define OR        op_or
+// #define XOR       op_xor
+// #define INVERT    op_invert
+
+// // Control flow
+// #define EXIT      op_exit
+// #define LIT       op_lit
+
+// // Memory operations
+// #define STORE     op_store
+// #define FETCH     op_fetch
+// #define ADDSTORE  op_addstore
+// #define SUBSTORE  op_substore
+// #define STOREBYTE op_storebyte
+// #define FETCHBYTE op_fetchbyte
+
+// // Memory movement
+// #define CCOPY     op_ccopy
+// #define CMOVE     op_cmove
+
+// void op_comma(cell val);
+// #define COMMA(val)  op_comma(val);
+
+// /* ---- DEFVAR - Built-in Forth Variables ---- */
+// // STATE
+// // LATEST
+// // HERE
+// // S0
+// // BASE
+
+// /* ---- DEFCONST - Built-in Forth Constants ---- */
+// // VERSION		Is the current version of this FORTH.
+// // R0		    The address of the top of the return stack.
+// // DOCOL		Pointer to DOCOL. -- the inner interpreter.. i think
+// // F_IMMED		The IMMEDIATE flag's actual value.
+// // F_HIDDEN	    The HIDDEN flag's actual value.
+// // F_LENMASK	The length mask in the flags/len byte.
+// //
+// // SYS_*		and the numeric codes of various Linux syscalls (from <asm/unistd.h>)
+
+// /* RETURN STACK */
+// /* ---- DEFCODE - Native Ops ---- */
+// // TOR
+// // FROMR
+// // RSFETCH / RSPFETCH
+// // RSSTORE / RSPSTORE
+// // RDROP
+
+// /* PARAMETER (DATA) STACK */
+// /* ---- DEFCODE - Native Ops ---- */
+// // DSPFETCH
+// // DSPSTORE
+
+// /* INPUT AND OUTPUT */
+// /* ---- DEFCODE - Native Ops ---- */
+// // KEY
+// // EMIT
+// // WORD
+// // NUMBER
+
+// /* DICTIONARY LOOK UPS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // FIND
+// // TCFA / CFA todo: ??
+// // TDFA / DFA todo: ??
+
+// /* COMPILING */
+// /* ---- DEFCODE - Native Ops ---- */
+// // CREATE
+// // COMMA
+// // LBRAC
+// // RBRAC
+// // COLON        (depends-on CREATE DOCOL)
+// // SEMICOLON
+
+// /* EXTENDING THE COMPILER */
+// /* ---- DEFCODE - Native Ops ---- */
+// // IMMEDIATE todo: look-up and review syntax conventions in jonesforth
+// // HIDDEN -- 'addr HIDDEN' toggles the hidden flag (F_HIDDEN) of the word defined at addr todo: look-up usage
+// // HIDE -- 'HIDE word' toggles the flag on a named 'word'
+// // TICK
+
+// /* BRANCHING */
+// /* ---- DEFCODE - Native Ops ---- */
+// // BRANCH   -- unconditional branch
+// // ZBRANCH  -- conditional branch (it only branches if the top of stack is zero)
+
+// /* LITERAL STRINGS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // LITSTRING
+// // TELL
+
+// /* QUIT AND INTERPRET */
+// /* ---- DEFCODE - Native Ops ---- */
+// // QUIT
+// // INTERPRET -- This interpreter is pretty simple, but remember that in FORTH you can always override it later with a more powerful one!
+
+// /* ODDS AND ENDS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // CHAR
+// // EXECUTE
+// // SYSCALL3 - numbers indicate nargs
+// // SYSCALL2 - numbers indicate nargs
+// // SYSCALL1 - numbers indicate nargs
+// // SYSCALL0 - numbers indicate nargs
+
+// /* DATA SEGMENT */ // todo: look-up/review this part in jforth
+// /* ---- Runtime Globals ---- */
+// // DATA_SEGMENT? / DICTIONARY
+
+// /* MY SHIT (ASM Primitives (brk(), etc), Misc) */
+
+// /* START OF FORTH CODE */
+// // ...
+// // ...
+// // ...
+
+
+
+
+
+
+
+
+
+
+
+// // -- %esi  - ip
+// // %eax  - Return Stack todo? or cach top of stack? idk
+// // %al   - 
+// // %ebp  - parameter stack pointer
+// // %esp  - 
+// // lodsl -
+
+
+// // ip       - instruction pointer
+// // rs       - return stack
+// // r0       - return stack (top?)
+// // ds       - data stack / parameter stack / THE Stack
+// // s0       - data stack (top?)
+// // fs       - float stack (wait to impl)
+// // f0       - float stack (top?)
+
+// // NEXT()   - 
+// // EXIT()   -
+// // DOCOL()  - the interpreter!
+// // QUIT()   - 
+// // LABEL()  - used to be called WORD() in slarba's sforth
+// // -- PUSHRS()
+// // -- POPRS()
+// // -- 
+// // --
+// // -- INT() / INTARG() ??
+// // op_docol(); // ???
+
+
+
+
+
+// typedef struct thread_state_t
+// {
+//     cell*   ds;
+//     cell*   s0;
+//     cell*   fs;
+//     cell*   f0;
+//     void**  ip;
+//     void*** rs;
+//     void*** r0;
+// } thread_state_t;
+
+// typedef struct word_hdr_t 
+// { /* dictionary definition header. NEVER change the order of these fields, it's crucial! */
+//     cell                flags;
+//     struct word_hdr_t*  next; // rename to prev?
+//     char                name[WORD_NAME_MAX_LENGTH];
+// } word_hdr_t;
+
+
+
+
+
+
+
+// /* ---- DEFVAR - Built-in Forth Variables ---- */
+// // STATE
+// // LATEST
+// // HERE
+// // S0
+// // BASE
+
+// /* ---- DEFCONST - Built-in Forth Constants ---- */
+// // VERSION		Is the current version of this FORTH.
+// // R0		    The address of the top of the return stack.
+// // DOCOL		Pointer to DOCOL. -- the inner interpreter.. i think
+// // F_IMMED		The IMMEDIATE flag's actual value.
+// // F_HIDDEN	    The HIDDEN flag's actual value.
+// // F_LENMASK	The length mask in the flags/len byte.
+// //
+// // SYS_*		and the numeric codes of various Linux syscalls (from <asm/unistd.h>)
+
+// /* RETURN STACK */
+// /* ---- DEFCODE - Native Ops ---- */
+// // TOR
+// // FROMR
+// // RSFETCH / RSPFETCH
+// // RSSTORE / RSPSTORE
+// // RDROP
+
+// /* PARAMETER (DATA) STACK */
+// /* ---- DEFCODE - Native Ops ---- */
+// // DSPFETCH
+// // DSPSTORE
+
+// /* INPUT AND OUTPUT */
+// /* ---- DEFCODE - Native Ops ---- */
+// // KEY
+// // EMIT
+// // WORD
+// // NUMBER
+
+// /* DICTIONARY LOOK UPS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // FIND
+// // TCFA / CFA todo: ??
+// // TDFA / DFA todo: ??
+
+// /* COMPILING */
+// /* ---- DEFCODE - Native Ops ---- */
+// // CREATE
+// // COMMA
+// // LBRAC
+// // RBRAC
+// // COLON        (depends-on CREATE DOCOL)
+// // SEMICOLON
+
+// /* EXTENDING THE COMPILER */
+// /* ---- DEFCODE - Native Ops ---- */
+// // IMMEDIATE todo: look-up and review syntax conventions in jonesforth
+// // HIDDEN -- 'addr HIDDEN' toggles the hidden flag (F_HIDDEN) of the word defined at addr todo: look-up usage
+// // HIDE -- 'HIDE word' toggles the flag on a named 'word'
+// // TICK
+
+// /* BRANCHING */
+// /* ---- DEFCODE - Native Ops ---- */
+// // BRANCH   -- unconditional branch
+// // ZBRANCH  -- conditional branch (it only branches if the top of stack is zero)
+
+// /* LITERAL STRINGS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // LITSTRING
+// // TELL
+
+// /* QUIT AND INTERPRET */
+// /* ---- DEFCODE - Native Ops ---- */
+// // QUIT
+// // INTERPRET -- This interpreter is pretty simple, but remember that in FORTH you can always override it later with a more powerful one!
+
+// /* ODDS AND ENDS */
+// /* ---- DEFCODE - Native Ops ---- */
+// // CHAR
+// // EXECUTE
+// // SYSCALL3 - numbers indicate nargs
+// // SYSCALL2 - numbers indicate nargs
+// // SYSCALL1 - numbers indicate nargs
+// // SYSCALL0 - numbers indicate nargs
+
+// /* DATA SEGMENT */ // todo: look-up/review this part in jforth
+// /* ---- Runtime Globals ---- */
+// // DATA_SEGMENT? / DICTIONARY
+
+// /* MY SHIT (ASM Primitives (brk(), etc), Misc) */
+
+// /* START OF FORTH CODE */
+// // ...
+// // ...
+// // ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// #endif // FTH_OPS_H
+
+// // -- DEFCODE -- for defining primitives
+// //  .macro defcode name, namelen, flags=0, label
+// // #define DECODE(label, name, namelen?, flags=0)
+// // DROP
+// // SWAP 
+// // DUP
+// // OVER
+// // ROT
+// // -ROT     (label: NROT)
+// // 2DROP    (label: TWODROP)    // drop top two elements of stack
+// // 2DUP     (label: TWODUP)     // duplicate top two elements of stack
+// // 2SWAP    (label: TWOSWAP)    // swap top two pairs of elements of stack
+// // ?DUP     (label: QDUP)       // duplicate top of stack if non-zero
+// // 1+ (label: INCR)
+// // 1- (label: DECR)
+// // 4+ INCR4
+// // 4- DECR4
+// // + ADD
+// // - SUB
+// // * MUL
+// // /MOD DIVMOD todo? should this be defword and not defcode prim?
+// // = EQU // top two words are equal?
+// // <> NEQU // top two words are not equal?
+// // < LT
+// // > GT
+// // <= LE
+// // >= GE
+// // 0= ZEQU // top of stack equals 0?
+// // 0<> ZNEQU  // top of stack not 0?
+// // 0< ZLT     // comparisons with 0
+// // 0> ZGT
+// // 0<= ZLE
+// // 0>= ZGE
+// // AND    // bitwise AND
+// // OR     // bitwise OR
+// // XOR    // bitwise XOR
+// // INVERT // this is the FORTH bitwise "NOT" function (cf. NEGATE and NOT)
+// ///
+// /// MEMORY CODES!
+// // ! STORE 
+
+
+
+// // -- DEFWORD -- for defining words
+// //  .macro defword name, namelen, flags=0, label
+// // #define DEFWORD(label, name, namelen?, flags=0)
+// //  defword "DOUBLE",6,,DOUBLE
+// //  .int DUP,PLUS,EXIT
+// //
+
+
+
+// // /* Flags - these are discussed later. */
+// //      .set F_IMMED,   0x80
+// //      .set F_HIDDEN,  0x20
+// //      .set F_LENMASK, 0x1f     // length mask
+// // #define BIT(x) (1<<(x)) // as opposed to (1<<x)??
+// // #define FLAG_HIDDEN     BIT(0)
+// // #define FLAG_IMMED      BIT(1)
+// // #define FLAG_BUILTIN    BIT(2)
+// // #define FLAG_HASARG     BIT(3)
+// // #define FLAG_INLINE     BIT(4)
+// // #define FLAG_DEFERRED   BIT(5)
+
+// ///////////////
+// /* IDK WORDS */
+// ///////////////
+// // _start?
+// // _cold_start?
+// // -- EXIT
+// // -- DUP
+// // -- +
+// // -- -
+
+// ///////////////
+// /* REGISTERS */
+// ///////////////
+// // ESP Stack Pointer
+// // EBP Frame Pointer
+// // -- IP?
+// //
+
+// //////////////////
+// /* ASSEMBLY OPS */
+// //////////////////
+// // GOTO?
+// // JMP / JUMP
+// // CALL
+
+// ///////////////////
+// /* FORTH OPCODES */ // "FORTH-ISMS" as put by jonesforth
+// ///////////////////
+// // Primitives        - Every FORTH primitive that we write has to be ended by NEXT. Think of it kind of like a return.
+// // DOCOL
+// // LIT - push to ds or rs?
+// // EXIT
+// // Return Stack
+// // Param Stack
+// // Interpreter
+// // Ops / Codewords   - The codeword is a pointer to the interpreter to run the function. todo??
+// // etc
+// //
+// //
+// // NEXT
+// // PUSHRS / PUSHRSP
+// // POPRS  / POPRSP
+// // DOCOL  / THE INTERPRETER!
+
+// // -- NEXT
+// // /* NEXT macro. */
+// //      .macro NEXT
+// //          lodsl
+// //          jmp *(%eax)
+// //      .endm
+
+// // /* Macros to deal with the return stack. */
+// // -- PUSHRS / PUSHRSP
+// //      .macro PUSHRSP reg
+// //          lea -4(%ebp),%ebp       // push reg on to return stack
+// //          movl \reg,(%ebp)
+// //      .endm
+// // -- POPRS / POPRSP
+// //      .macro POPRSP reg
+// //          mov (%ebp),\reg         // pop top of return stack to reg
+// //          lea 4(%ebp),%ebp
+// //      .endm
+
+// // /* DOCOL - the interpreter! */
+// //      .text
+// //      .align 4
+// //  DOCOL:
+// //      PUSHRSP %esi            // push %esi on to the return stack
+// //      addl $4,%eax            // %eax points to codeword, so make
+// //      movl %eax,%esi          // %esi point to first data word
+// //      NEXT
+
+// // -- CALL
+// // BYTECODE(CALL, "call", 0, 0, FLAG_HASARG, { 
+// //     void *fn = ARG();
+// //     PUSHRS(ip);
+// //     ip = fn;    
+// // })
+// //
+// // -- 
+
+
+// // misc
+// // '1f' (etc.) means label '1:' "forwards" and '1b' (etc.) means label '1:' "backwards"
+// // 'ja' is "jump if above", 'jb' for "jump if below", 'je' "jump if equal" etc.
