@@ -1,11 +1,62 @@
 #include "zfth_ops.h"
 
+typedef uintptr_t   cell;
+typedef cell*       XT;     // Execution Token (pointer to codeword)
 
+static cell*    rsp;
+static cell*    rs0;
+static cell*    dsp;
+static cell*    ds0;
+static XT*      ip;     // ?
+
+
+/*
+    stacks --
+    -- ds
+    -- s0
+*/
+
+/* Helpers / Bootstrap Ops --
+    -- defword  - creates compound words written in Forth itself
+    -- defcode  - creates primitive words written in native C       // todo?: rename to defop?
+    -- defvar   - todo: creates a variable
+    -- defconst - todo: creates a const
+
+    -- cfa      - // todo? not a word, right?
+*/
+/* Engine Ops --
+    -- cfa
+    -- 
+*/
+/* Globals --
+    // Dictionary //
+    -- here_size    - size of allocated pool        // why not initialize here? .. MACRO? or is there use in having it as global?
+    -- here         - working memory                // why is this void* instead of cell
+    -- here0        - beginning of working memory   // same here, etc
+    -- latest       - //
+*/
+/* Native Words --
+    -- word
+    -- find
+    -- comma
+    -- tick
+    -- eow
+*/
+
+void defword    (const char* name, cell flags, void* code[], int wordcount);
+void defcode    (const char* name, cell flags, void* code);
+void defvar     (const char* name, cell flags, cell value);
+void defconst   (const char* name, cell flags, cell value);
 
 
 #define F_IMMED     0x80
 #define F_HIDDEN    0x20
 #define F_LENMASK   0x1f
+
+// DEFWORD  - .macro defword  name, namelen, flags=0, label             - creates compound words written in Forth itself
+// DEFCODE  - .macro defcode  name, namelen, flags=0, label             - creates primitive words written in native C       // todo: rename to defop?
+// DEFVAR   - .macro defvar   name, namelen, flags=0, label, initial=0  - 
+// DEFCONST - .macro defconst name, namelen, flags=0, label, value      - 
 
 void defword(const char* name, cell flags, void* code[], int wordcount) 
 {
@@ -45,14 +96,24 @@ void defcode(const char* name, cell flags, void* code)
     comma((cell)code); // store native c code pointer
 }
 
+void defvar(const char* name, cell flags, cell value)
+{
+    // Variable returns its address: [LIT][address][EXIT]
+    cell addr = (cell)here;
 
+    cell words[] = {};
+    defword(name, flags, words, 3);
 
+    comma(value);
+}
 
+void defconst(const char* name, cell flags, cell value)
+{
+    // cell words[] = {XT(op_lit), (cell)value, XT(op_exit)};
+    cell words[] = {};
+    defword(name, flags, words, 3);
+}
 
-// DEFWORD  - .macro defword  name, namelen, flags=0, label             - creates compound words written in Forth itself
-// DEFCODE  - .macro defcode  name, namelen, flags=0, label             - creates primitive words written in native C       // todo: rename to defop?
-// DEFVAR   - .macro defvar   name, namelen, flags=0, label, initial=0  - 
-// DEFCONST - .macro defconst name, namelen, flags=0, label, value      - 
 
 cell         here_size  = 0;        /* size of allocated pool */        // why not initialize here?
 void*        here       = NULL;     /* working memory */                // why is this void* instead of cell
@@ -119,24 +180,17 @@ static void op_comma(cell value) {
 
 
 
-void defvar(const char* name, cell value, cell flags)
-{
-    // Variable returns its address: [LIT][address][EXIT]
-    cell addr = (cell)here;
 
-    cell words[] = {};
-    defword(name, flags, words, 3);
 
-    comma(value);
-}
 
-void defconst(const char* name, cell value, cell flags)
-{
-    // cell words[] = {XT(op_lit), (cell)value, XT(op_exit)};
-    cell words[] = {};
-    defword(name, flags, words, 3);
-}
 
+
+//////////
+// MAIN //
+//      //
+//      //
+//      //
+//////////
 int main(int argc, char** argv)
 {
     // cell   datastack[1024]; /* parameter stack */
