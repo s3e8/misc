@@ -158,7 +158,99 @@ void print_stack(cell* ds, cell* s0)
     printf(" ]\n");
 }
 
-void forth_run(void*** rs, cell* ds)
+typedef struct reader_state_t
+{
+    FILE*   stream;
+    char*   linebuf;
+    cell    linebuf_size;
+    char*   next_char;
+} reader_state_t;
+
+// reader state functions //
+void init_reader_state(reader_state_t* rs,char* linebuf, size_t linebuf_size, FILE* stream)
+{
+    // reader_state_t* rs = (reader_state_t*)malloc(sizeof(reader_state_t));
+    rs->stream        = stream;
+    rs->linebuf       = linebuf;
+    rs->linebuf[0]    = '\0';
+    rs->linebuf_size  = linebuf_size;
+    rs->next_char     = linebuf;
+}
+
+static cell is_space(char c)
+{
+    return c == ' ' || c == '\t';
+}
+
+static void skip_whitespace(reader_state_t* rs)
+{
+    while (is_space(rs->linebuf[*rs->next_char]))
+    {
+        rs->next_char++;
+    }
+}
+
+static cell is_eol(reader_state_t* rs)
+{
+    skip_whitespace(rs);
+    return rs->linebuf[*rs->next_char] == '\0' || rs->linebuf[*rs->next_char] == '\n';
+}
+
+static cell is_eof(reader_state_t* rs)
+{
+    return *rs->next_char=='\0' && feof(rs->stream);
+}
+
+static char* get_next_line(reader_state_t* rs)
+{
+    char* tmp = fgets(rs->linebuf, rs->linebuf_size, rs->stream);
+    if (!tmp) return NULL;
+
+    rs->next_char = tmp;
+    return rs->linebuf;
+}
+
+static char* prompt_line(char* prompt, reader_state_t* rs)
+{
+    printf("%s", prompt);
+    fflush(stdout);
+
+    get_next_line(rs);
+}
+
+static char* read_word(reader_state_t* rs, char* tobuf)
+{
+    // Skip whitespace
+    skipws:
+        skip_whitespace(rs);
+    
+    // If at end of line, read new line
+    if (*rs->next_char == '\0') 
+    {
+        if (!get_next_line(rs)) return NULL;
+        goto skipws;
+    }
+    
+    // If still empty, return NULL
+    if (*rs->next_char == '\0') return NULL;
+
+    char* buf = tobuf;
+    int count = 0;
+    int bufsize = WORD_NAME_MAX_LENGTH;
+    
+    // Copy word until next whitespace or end
+    while (*rs->next_char != '\0' && !is_space(*rs->next_char) && count < bufsize - 1) 
+    {
+        *buf++ = *rs->next_char++;
+        count++;
+    }
+    rs->next_char++;
+    *buf = '\0';
+    
+    return tobuf;
+}
+
+void forth_run(void*** rs, cell* ds, int argc, char** argv)
 {
     printf("initializing forth...\n");
 
@@ -172,6 +264,11 @@ void forth_run(void*** rs, cell* ds)
 
     char linebuf[DEFAULT_LINEBUF_SIZE];
     char wordbuf[WORD_NAME_MAX_LENGTH];
+
+    char stdinbuf[1024];
+    reader_state_t reader_state;
+
+    init_reader_state(&reader_state, stdinbuf, 1024, stdin);
 
     void*** r0 = rs;
     cell*   s0 = ds;
@@ -198,11 +295,17 @@ void forth_run(void*** rs, cell* ds)
     defcode("bye",          CODE(BYE),          0,              0);
 
     // define variables and constants //
-    defconst("base",  10);
-    defconst("state", 0);
-    defconst("here",  (cell)here);
-    defconst("here0", (cell)here0);
-    defconst("latest",(cell)latest);
+    defconst("base",    10);
+    defconst("state",   0);
+    defconst("here",    (cell)here);
+    defconst("here0",   (cell)here0);
+    defconst("latest",  (cell)latest);
+    //
+    defconst("s0", (cell)&s0);
+    defconst("r0", (cell)&r0);
+    //
+    // defconst("input-state",    (cell)&input_state);
+    // defconst("output-state",   (cell)&output);
 
     // ---- OUTER INTERPRETER ---- //
     // QUIT is the topmost interpreter loop: interpret forever. better version implemented in
@@ -223,10 +326,16 @@ void forth_run(void*** rs, cell* ds)
     // primitives //
     OP( INTERPRET ):
         {
-            printf("> ");
-            fflush(stdout);
+            // Read a line if we don't have one already
+            if (*reader_state.next_char == '\0')
+            {
+                prompt_line("ok> ", &reader_state);
+            }
 
-            if (!fgets(wordbuf, sizeof(wordbuf), stdin)) printf("\n");
+            if (!read_word(&reader_state, wordbuf))
+            {
+                NEXT();
+            }
 
             wordbuf[strcspn(wordbuf, "\n")] = '\0';
             if (wordbuf[0] == '\0') NEXT();
@@ -312,6 +421,16 @@ void forth_run(void*** rs, cell* ds)
 
                 NEXT();
             }
+        }
+        NEXT();
+
+    OP( PROMPT ):
+        {
+            printf("[ prompt ]\n");
+
+            reader_state_t* state = (reader_state_t*)POP();
+            char* prompt = (char*)POP();
+            prompt_line(prompt, state);
         }
         NEXT();
 
@@ -423,10 +542,13 @@ void forth_run(void*** rs, cell* ds)
         return;
 }
 
-int main()
+int main(int argc, char** argv)
 {
     cell   datastack[1024];
     void** returnstack[512];
+
+    // todo: should I initialize reader state stuff on the stack here or in interpret?
+    // todo: startup.f
 
     // init dictionary
     here_size   = HERE_SIZE;
@@ -434,9 +556,15 @@ int main()
     here        = here0;
 
     // + sizeofstack because they grow downward
-    forth_run(returnstack+512, datastack+1024);
+    forth_run(
+        returnstack + 512, 
+        datastack   + 1024,
+        argc, 
+        argv
+    );
 
     printf("closing forth...\n");
+    // free(reader_state);
     free(here0);
 
     return 0;
