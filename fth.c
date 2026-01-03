@@ -28,14 +28,14 @@ static word_hdr_t* find(char* name)
 {
     if (!name) return NULL;
 
-    printf("finding: %s...\n", name);
+    // printf("finding: %s...\n", name);
 
     word_hdr_t* hdr = latest;
     while (hdr)
     {
         if (!strncmp(hdr->name, name, WORD_NAME_MAX_LENGTH))
         {
-            printf("found\n");
+            // printf("found\n");
             return hdr;
         }
 
@@ -194,6 +194,7 @@ void forth_run(void*** rs, cell* ds)
     defcode("eow",          CODE(EOW),          0,              0);
     defcode("exit",         CODE(EXIT),         0,              0); // returns from return stack .. I think
     defcode("create",       CODE(CREATE),       FLAG_HASARG,    1);
+    defcode(".",            CODE(DOT),          0,              0);
     defcode("bye",          CODE(BYE),          0,              0);
 
     // define variables and constants //
@@ -282,9 +283,9 @@ void forth_run(void*** rs, cell* ds)
             // thus we schedule and interpret the word
             else
             {
-                printf("scheduling word: %s\n", word->name);
-                printf("flags: %lu\n", word->flags);
-                printf("code addr: %p\n", cfa(word));
+                // printf("scheduling word: %s\n", word->name);
+                // printf("flags: %lu\n", word->flags);
+                // printf("code addr: %p\n", cfa(word));
 
                 // retrieve the start of this words code
                 void** code = cfa(word);
@@ -294,7 +295,7 @@ void forth_run(void*** rs, cell* ds)
                 // if it's a builtin (defcode), we use code_immediatebuf
                 if (word->flags & FLAG_BUILTIN)
                 {
-                    printf("executing builtin word\n");
+                    // printf("executing builtin word\n");
 
                     code_immediatebuf[0] = *code;
                     ip = code_immediatebuf; // NEXT() will be called after
@@ -318,7 +319,7 @@ void forth_run(void*** rs, cell* ds)
         {
             // printf("[ branch ]\n");
             tmp = INTARG();
-            ip += (tmp/sizeof(void*))-1;  
+            ip += (tmp/sizeof(void*))-1;
         }
         NEXT();
 
@@ -388,16 +389,16 @@ void forth_run(void*** rs, cell* ds)
         {
             printf("[ exit ]\n");
             ip = POPRS();
-            printf("popping return stack to ip %p\n", ip);
+            // printf("popping return stack to ip %p\n", ip);
         }
         NEXT();
 
     OP( IRETURN ):
         {
-            printf("[ ireturn ]\n");
+            // printf("[ ireturn ]\n");
 
             ip = *nestingstack++;
-            printf("popping nesting stack to ip %p\n", ip);
+            // printf("popping nesting stack to ip %p\n", ip);
         }
         NEXT();
 
@@ -406,6 +407,15 @@ void forth_run(void*** rs, cell* ds)
             printf("[ create ]\n");
 
             // create((char*)POP(), 0);
+        }
+        NEXT();
+
+    OP( DOT ):
+        {
+            // printf("[ . ]\n");
+
+            cell val = POP();
+            printf("%ld\n", (long)val);
         }
         NEXT();
 
