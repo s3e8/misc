@@ -158,6 +158,109 @@ void print_stack(cell* ds, cell* s0)
     printf(" ]\n");
 }
 
+// reader stuff //
+typedef struct reader_state_t
+{
+    FILE*   stream;
+    char*   current_line;
+    cell    current_line_size;
+    char*   current_word;
+    cell    current_word_size;
+    char*   cursor;
+} reader_state_t;
+
+// reader state functions //
+void init_reader_state(reader_state_t* rs, char* current_line, cell current_line_size, FILE* stream)
+{
+    // reader_state_t* rs = (reader_state_t*)malloc(sizeof(reader_state_t));
+    rs->stream              = stream;
+    rs->current_line        = current_line;
+    rs->current_line[0]     = '\0';
+    rs->current_line_size   = current_line_size;
+    rs->cursor              = current_line;
+}
+
+static cell is_space(char c)
+{
+    return c == ' ' || c == '\t';
+}
+
+static void skip_whitespace(reader_state_t* rs)
+{
+    while (is_space(*rs->cursor))
+    {
+        rs->cursor++;
+    }
+}
+
+static cell is_eol(reader_state_t* rs)
+{
+    skip_whitespace(rs);
+    return *rs->cursor == '\0' || *rs->cursor == '\n';
+}
+
+static cell is_eof(reader_state_t* rs)
+{
+    return *rs->cursor=='\0' && feof(rs->stream);
+}
+
+static char* get_next_line(reader_state_t* rs)
+{
+    char* tmp = fgets(rs->current_line, rs->current_line_size, rs->stream);
+    if (!tmp) return NULL;
+
+    // Remove newline if present
+    size_t len = strlen(rs->current_line);
+    if (len > 0 && rs->current_line[len-1] == '\n') 
+    {
+        rs->current_line[len-1] = '\0';
+    }
+    
+    rs->cursor = rs->current_line;
+
+    return rs->current_line;
+}
+
+static void prompt_line(char* prompt, reader_state_t* rs)
+{
+    printf("%s", prompt);
+    fflush(stdout);
+
+    // get_next_line(rs);
+}
+
+static char* read_word(reader_state_t* rs, char* tobuf)
+{
+    // Skip whitespace
+    skipws:
+        skip_whitespace(rs);
+    
+    // If at end of line, read new line
+    if (*rs->cursor == '\0') 
+    {
+        prompt_line("> ", rs);
+        if (!get_next_line(rs)) return NULL;
+        goto skipws;
+    }
+    
+    // If still empty, return NULL
+    if (*rs->cursor == '\0') return NULL;
+
+    char* buf = tobuf;
+    int count = 0;
+    int bufsize = WORD_NAME_MAX_LENGTH;
+    
+    // Copy word until next whitespace or end
+    while (*rs->cursor != '\0' && !is_space(*rs->cursor) && count < bufsize - 1) 
+    {
+        *buf++ = *rs->cursor++;
+        count++;
+    }
+    rs->cursor++;
+    *buf = '\0';
+    
+    return tobuf;
+}
 
 void forth_run(void*** rs, cell* ds, int argc, char** argv)
 {
@@ -173,7 +276,9 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     char linebuf[DEFAULT_LINEBUF_SIZE];
     char wordbuf[WORD_NAME_MAX_LENGTH];
 
-    // reader state stuff later
+    
+    reader_state_t reader_state;
+    init_reader_state(&reader_state, linebuf, DEFAULT_LINEBUF_SIZE, stdin);
 
     void*** r0 = rs;
     cell*   s0 = ds;
@@ -231,15 +336,32 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     // primitives //
     OP( INTERPRET ):
         {
-            printf("[ interpret ]\n");
+            // printf("stdinbuf:  %s\n", stdinbuf);
+            // printf("linebuf:   %s\n", reader_state.linebuf);
+            // printf("wordbuf:   %s\n", wordbuf);
+            // printf("next char: %s\n", reader_state.next_char);
 
-            // simple prompt to use reading into wordbuf
-            printf("> ");
-            if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
-            {
-                printf("error reading input\n");
-                NEXT();
-            }
+            // //
+            // strncpy(wordbuf, read_word(&reader_state, wordbuf), WORD_NAME_MAX_LENGTH);
+            // if (!wordbuf)
+            // {
+            //     NEXT();
+            // }
+
+            // Read a line if we don't have one already
+            // if (*reader_state.cursor == '\0')
+            // {
+            //     prompt_line("> ", &reader_state);
+            //     read_word(&reader_state, linebuf);
+            // }
+
+            strncpy(wordbuf, read_word(&reader_state, linebuf), WORD_NAME_MAX_LENGTH);
+
+            // printf("stdinbuf:  %s\n", stdinbuf);
+            printf("rs.linebuf: %s\n", reader_state.current_line);
+            printf("linebuf:    %s\n", linebuf);
+            printf("wordbuf:    %s\n", wordbuf);
+            printf("cursor:     %s\n", reader_state.cursor);
 
             wordbuf[strcspn(wordbuf, "\n")] = '\0';
             if (wordbuf[0] == '\0') NEXT();
@@ -327,15 +449,15 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
         }
         NEXT();
 
-    // OP( PROMPT ):
-    //     {
-    //         printf("[ prompt ]\n");
+    OP( PROMPT ):
+        {
+            printf("[ prompt ]\n");
 
-    //         reader_state_t* state = (reader_state_t*)POP();
-    //         char* prompt = (char*)POP();
-    //         prompt_line(prompt, &reader_state);
-    //     }
-    //     NEXT();
+            reader_state_t* state = (reader_state_t*)POP();
+            char* prompt = (char*)POP();
+            prompt_line(prompt, &reader_state);
+        }
+        NEXT();
 
     OP( BRANCH ):
         {
@@ -365,28 +487,45 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     OP( COLON ):
         {
             printf("[ colon ]\n");
-
-            // simple prompt to use reading into wordbuf
-            printf("> ");
-            if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
-            {
-                printf("error reading input\n");
+            
+            // Read the word name
+            if (!read_word(&reader_state, wordbuf)) {
+                printf("Failed to read word name\n");
                 NEXT();
             }
             
-            // REMOVE THE NEWLINE!
-            wordbuf[strcspn(wordbuf, "\n")] = '\0';
-
-            wordbuf[strcspn(wordbuf, "\n")] = '\0';
-            if (wordbuf[0] == '\0') NEXT();
-
+            printf("Creating word: %s\n", wordbuf);
+            
+            // Create the word header
             create(wordbuf, 0);
-            printf("created word: %s\n", wordbuf);
-            // comma((cell)getcode("docol"));
             latest->flags |= FLAG_HIDDEN;
+            
+            // Start the word with DOCOL
+            comma((cell)getcode("DOCOL"));
+            
+            // Enter compilation mode
             state = STATE_COMPILE;
+            printf("Entered compilation mode for word: %s\n", wordbuf);
         }
         NEXT();
+        // {
+        //     printf("[ colon ]\n");
+
+        //     char name[WORD_NAME_MAX_LENGTH];
+            
+        //     // read next word
+        //     read_word(&reader_state, linebuf);
+
+        //     name[strcspn(name, "\n")] = '\0';
+        //     if (name[0] == '\0') NEXT();
+
+        //     create(name, 0);
+        //     printf("created word: %s\n", name);
+        //     // comma((cell)getcode("docol"));
+        //     latest->flags |= FLAG_HIDDEN;
+        //     state = STATE_COMPILE;
+        // }
+        // NEXT();
 
     OP( SEMICOLON ):
         {

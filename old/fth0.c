@@ -84,10 +84,10 @@ static void create_constant(const char* name, cell value) {
 // reader stuff
 void init_reader_state(reader_state_t* state, char* linebuf, cell linebuf_size, FILE* fp) {
     state->stream       = fp;
-    state->linebuf      = linebuf;
-    state->linebuf[0]   = '\0';
-    state->linebuf_size = linebuf_size;
-    state->next_char    = linebuf;
+    state->current_line      = linebuf;
+    state->current_line[0]   = '\0';
+    state->current_line_size = linebuf_size;
+    state->cursor    = linebuf;
 }
 
 // reader_state_t* reader_open_file(reader_state_t* reader, char* fname) {
@@ -100,32 +100,32 @@ void init_reader_state(reader_state_t* state, char* linebuf, cell linebuf_size, 
 // }
 
 char* get_next_line(reader_state_t* state) {
-    char* tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
+    char* tmp = fgets(state->current_line, state->current_line_size, state->stream);
     if(!tmp) return NULL;
 
-    state->next_char = tmp;
+    state->cursor = tmp;
     return tmp;
 }
 
 static void skip_whitespace(reader_state_t* state) {
-    while(isspace(*state->next_char)) state->next_char++;
+    while(isspace(*state->cursor)) state->cursor++;
 }
 
 static cell is_eol(reader_state_t* state) {
     skip_whitespace(state);
-    return *state->next_char=='\0';
+    return *state->cursor=='\0';
 }
 
 static cell is_eof(reader_state_t* fp) {
-    return *fp->next_char=='\0' && feof(fp->stream);
+    return *fp->cursor=='\0' && feof(fp->stream);
 }
 
 // static char *prompt_line(const char *prompt, reader_state_t *state) {}
 
 static int read_key(reader_state_t* state) { // todo: ??
-    if(*state->next_char == '\0') if(!get_next_line(state)) return -1;
+    if(*state->cursor == '\0') if(!get_next_line(state)) return -1;
 
-    return *state->next_char++;
+    return *state->cursor++;
 }
 
 char* read_word(reader_state_t* state, char* tobuf) { // todo: it's more like buffer_word.. or load_word
@@ -136,16 +136,16 @@ char* read_word(reader_state_t* state, char* tobuf) { // todo: it's more like bu
         skip_whitespace(state);
 
     // buffer exhausted? fill and reskip whitespace
-    if(*state->next_char == '\0') {
+    if(*state->cursor == '\0') {
         if(!get_next_line(state)) return NULL;
         goto skipws; 
     }
 
     // copy until next whitespace
-    while(*state->next_char != '\0' && !isspace(*state->next_char)) {
-        *buf++ = *state->next_char++;
+    while(*state->cursor != '\0' && !isspace(*state->cursor)) {
+        *buf++ = *state->cursor++;
     }
-    state->next_char++;
+    state->cursor++;
     *buf = '\0';
 
     return tobuf;

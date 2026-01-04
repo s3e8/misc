@@ -134,17 +134,17 @@ static dict_hdr_t *create_word(const char *name, cell flags) {
 
 typedef struct reader_state_t {
   FILE *stream;
-  char *linebuf;
+  char *current_line;
   cell linebuf_size;
-  char *next_char;
+  char *cursor;
 } reader_state_t;
 
 static void init_reader_state(reader_state_t *state, char *linebuf, cell linebuf_size, FILE *fp) {
   state->stream = fp;
-  state->linebuf = linebuf;
-  state->linebuf[0] = '\0';
+  state->current_line = linebuf;
+  state->current_line[0] = '\0';
   state->linebuf_size = linebuf_size;
-  state->next_char = linebuf;
+  state->cursor = linebuf;
 }
 
 static reader_state_t *open_file(const char *filename, const char *mode) {
@@ -168,27 +168,27 @@ static reader_state_t *open_file(const char *filename, const char *mode) {
 
 static void close_file(reader_state_t *fp) {
   if(fp->stream) fclose(fp->stream);
-  FREE(fp->linebuf);
+  FREE(fp->current_line);
   FREE(fp);
 }
 
 static void skip_whitespaces(reader_state_t *state) {
-  while(isspace(*state->next_char)) state->next_char++;
+  while(isspace(*state->cursor)) state->cursor++;
 }
 
 static cell is_eol(reader_state_t *state) {
   skip_whitespaces(state);
-  return *state->next_char=='\0';
+  return *state->cursor=='\0';
 }
 
 static cell is_eof(reader_state_t *fp) {
-  return *fp->next_char=='\0' && feof(fp->stream);
+  return *fp->cursor=='\0' && feof(fp->stream);
 }
 
 static char *read_next_line(reader_state_t *state) {
-  char *tmp = fgets(state->linebuf, state->linebuf_size, state->stream);
+  char *tmp = fgets(state->current_line, state->linebuf_size, state->stream);
   if(!tmp) return NULL;
-  state->next_char = tmp;
+  state->cursor = tmp;
   return tmp;
 }
 
@@ -198,17 +198,17 @@ static char *prompt_line(const char *prompt, reader_state_t *state) {
     return NULL;
   }
   add_history(tmp);
-  strncpy(state->linebuf, tmp, state->linebuf_size);
+  strncpy(state->current_line, tmp, state->linebuf_size);
   free(tmp);
-  state->next_char = state->linebuf;
-  return state->next_char;
+  state->cursor = state->current_line;
+  return state->cursor;
 }
 
 static int read_key(reader_state_t *state) {
-  if(*state->next_char=='\0') {
+  if(*state->cursor=='\0') {
     if(!read_next_line(state)) return -1;
   }
-  return *state->next_char++;
+  return *state->cursor++;
 }
 
 static char *read_word(reader_state_t *state, char *tobuf) {
@@ -219,16 +219,16 @@ static char *read_word(reader_state_t *state, char *tobuf) {
   skip_whitespaces(state);
 
   // buffer exhausted? fill and reskip whitespaces
-  if(*state->next_char == '\0') {
+  if(*state->cursor == '\0') {
     if(!read_next_line(state)) return NULL;
     goto skipws;
   }
 
   // copy until next whitespace
-  while(*state->next_char!='\0' && !isspace(*state->next_char)) {
-    *buf++ = *state->next_char++;
+  while(*state->cursor!='\0' && !isspace(*state->cursor)) {
+    *buf++ = *state->cursor++;
   }
-  state->next_char++;
+  state->cursor++;
   *buf = '\0';
 
   return tobuf;

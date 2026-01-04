@@ -135,10 +135,10 @@ typedef struct builtin_word_t
 typedef struct reader_state_t 
 {
     FILE* stream;
-    char* linebuf;
-    cell  linebuf_size;
+    char* current_line;
+    cell  current_line_size;
     // wordbuf?
-    char* next_char;
+    char* cursor;
 } reader_state_t;
 
 typedef struct forth_vm_t // call ctx?
