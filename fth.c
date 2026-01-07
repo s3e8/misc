@@ -50,8 +50,6 @@ static word_hdr_t* create(char* name, cell flags)
 {
     if (!name) name = "\0";
 
-    // printf("creating: %s\n", name);
-
     word_hdr_t* new = (word_hdr_t*)here;
     here += sizeof(word_hdr_t);
     strncpy(new->name, name, WORD_NAME_MAX_LENGTH);
@@ -59,8 +57,9 @@ static word_hdr_t* create(char* name, cell flags)
     new->next = latest;
     latest = new;
 
-    // if (find(name)) printf("created successfully\n");
-    // else printf("creation failed\n");
+    // print word and its location in memory
+    if (find(name)) printf("created word: %s at %p\n", new->name, new);
+    else printf("creation failed\n");
     
     return new;
 }
@@ -74,6 +73,11 @@ static void comma(cell value)
 {
     *(cell*)here = value;
     here += sizeof(cell);
+}
+
+static void conv_ptr_to_str(char* buf, void* ptr)
+{
+    sprintf(buf, "%p", ptr);
 }
 
 // word header flags //
@@ -96,10 +100,46 @@ void** ip = NULL;
 #define INTARG()    ((cell)(*ip++))
 #define PUSHRS(x)   (*--rs = (void**)(x))
 #define POPRS()     (*rs++)
-// stack stuff //
-#define PUSH(x)   (*ds++ = (cell)(x))
-#define POP()     (*--ds)
-#define PEEK()    (*(ds-1))
+#define PUSH(x)     (*ds++ = (cell)(x))
+#define POP()       (*--ds)
+#define PEEK()      (*(ds-1))
+
+//  #define CHECK_STACK_UNDERFLOW(name, amt) \
+// if ((((cell)s0 - (cell)ds) / sizeof(cell)) < amt)  \
+//     {                                                                        \
+//       printf("%s: stack underflow\n", (name));                               \
+//       PUSHRS(ip);							\
+//       ip = debugger_vector;						\
+//       NEXT();                                                                \
+//     }
+
+// #define CHECK_STACK_UNDERFLOW(s0, ds, n) \
+//     if ((ds - s0) < (n)) { \
+//         printf("data stack underflow\n"); \
+//         PUSHRS(ip); \
+//         NEXT(); \
+//     }
+// #define CHECK_STACK_OVERFLOW(s0, ds, size) \
+//     if ((ds - s0) >= (size)) { \
+//         printf("data stack overflow\n"); \
+//         PUSHRS(ip); \
+//         NEXT(); \
+//     }
+// #define CHECK_RSTACK_UNDERFLOW(r0, rs, n) \
+//     if ((rs - r0) < (n)) { \
+//         printf("return stack underflow\n"); \
+//         NEXT(); \
+//     }
+// #define CHECK_RSTACK_OVERFLOW(r0, rs, size) \
+//     if ((rs - r0) >= (size)) { \
+//         printf("return stack overflow\n"); \
+//         NEXT(); \
+//     }
+
+// #define SAFE_PUSH(x)    ( CHECK_STACK_OVERFLOW(s0, ds, 1024)    PUSH(x)     )
+// #define SAFE_POP()      ( CHECK_STACK_UNDERFLOW(s0, ds, 1)      POP()       )
+// #define SAFE_PUSHRS(x)  ( CHECK_RSTACK_OVERFLOW(r0, rs, 512)    PUSHRS(x)   )
+// #define SAFE_POPRS()    ( CHECK_RSTACK_UNDERFLOW(r0, rs, 1)     POPRS()     )
 
 // helper macros //
 #define CODE(name) &&op_##name
@@ -158,6 +198,79 @@ void print_stack(cell* ds, cell* s0)
     printf(" ]\n");
 }
 
+typedef struct reader_state_t
+{
+    char*   current_line;
+    cell    line_length;
+    char*   current_word;
+    cell    word_length;
+    char*   words_remaining;
+} reader_state_t;
+
+static void init_reader_state(reader_state_t* state)
+{
+    state->current_line    = NULL;
+    state->line_length     = 0;
+    state->current_word    = NULL;
+    state->word_length     = 0;
+    state->words_remaining = NULL;
+}
+
+static void skip_whitespace(char* words_remaining)
+{
+    while (*words_remaining == ' ' || *words_remaining == '\t' || *words_remaining == '\n')
+    {
+        words_remaining++;
+    }
+}
+
+static void get_next_line(reader_state_t* rs)
+{
+    printf("> ");
+    if (!fgets(rs->current_line, rs->line_length, stdin))
+    {
+        printf("error reading input\n");
+        NEXT();
+    }
+
+    rs->words_remaining = rs->current_line;
+    rs->words_remaining[strcspn(rs->words_remaining, "\n")] = '\0';
+    if (rs->words_remaining[0] == '\0') NEXT();
+}
+
+static char* read_word(reader_state_t* rs)
+{
+    char* buf = rs->current_word;
+
+    skipws: 
+        skip_whitespace(rs->words_remaining);
+
+    // buffer exhausted? get next line
+    if (*rs->words_remaining == '\0')
+    {
+        get_next_line(rs);
+        goto skipws;
+    }
+
+    // copy until next whitespace or EOL
+    while (*rs->words_remaining != ' ' && *rs->words_remaining != '\t' && *rs->words_remaining != '\n' && *rs->words_remaining != '\0')
+    {
+        *buf++ = *rs->words_remaining++;
+    }
+    *rs->words_remaining++;
+    *buf = '\0';
+
+    char* current_word      = rs->current_word;
+    char* current_line      = rs->current_line;
+    char* words_remaining   = rs->words_remaining;
+
+    printf("linebuf --- %s\n", rs->current_line);
+    printf("wordbuf --- %s\n", rs->current_word);
+    printf("tmp buf --- %s\n", rs->current_word);
+    printf("remaining - %s\n", rs->words_remaining);
+
+    return rs->current_word;
+}
 
 void forth_run(void*** rs, cell* ds, int argc, char** argv)
 {
@@ -169,11 +282,16 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     void**  nestingstack_space[NESTING_STACK_MAX_DEPTH];
     void*** nestingstack = nestingstack_space + NESTING_STACK_MAX_DEPTH;
 
-    // char stdinbuf[1024];
+    char stdinbuf[1024];
     char linebuf[DEFAULT_LINEBUF_SIZE];
     char wordbuf[WORD_NAME_MAX_LENGTH];
 
-    // reader state stuff later
+    reader_state_t reader_state;
+    reader_state.current_line       = linebuf;
+    reader_state.line_length        = DEFAULT_LINEBUF_SIZE;
+    reader_state.current_word       = wordbuf;
+    reader_state.word_length        = WORD_NAME_MAX_LENGTH;
+    reader_state.words_remaining    = linebuf;
 
     void*** r0 = rs;
     cell*   s0 = ds;
@@ -233,18 +351,23 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
         {
             printf("[ interpret ]\n");
 
-            // simple prompt to use reading into wordbuf
-            printf("> ");
-            if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
-            {
-                printf("error reading input\n");
-                NEXT();
-            }
+            // // if reader_state.words_remaining points to a non-empty string,
+            // // todo:
+            // // if there are more words in the linebuf, attempt to take the next word...
+            // // else prompt for user input
+            // printf("> ");
+            // if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
+            // {
+            //     printf("error reading input\n");
+            //     NEXT();
+            // }
 
-            wordbuf[strcspn(wordbuf, "\n")] = '\0';
-            if (wordbuf[0] == '\0') NEXT();
+            // wordbuf[strcspn(wordbuf, "\n")] = '\0';
+            // if (wordbuf[0] == '\0') NEXT();
 
-            word_hdr_t* word = find(wordbuf);
+            read_word(&reader_state);
+
+            word_hdr_t* word = find(reader_state.current_word);
             if (!word)
             {
                 // check if words a number
@@ -395,9 +518,12 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
             // finish current definition
             comma((cell)getcode("exit"));
             // comma((cell)getcode("ireturn"));
-            latest->flags &= ~FLAG_HIDDEN;
+            latest->flags &= ~FLAG_HIDDEN; // todo: I forgot what's happening here
 
-            
+            // // add pointer hex value as new word for debugging
+            // char ptrstr[32];
+            // conv_ptr_to_str(ptrstr, cfa(latest));
+            // create(ptrstr, FLAG_IMMEDIATE | FLAG_HIDDEN | FLAG_BUILTIN);
 
             state = STATE_IMMEDIATE;
         }
@@ -406,8 +532,9 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     OP( LIT ):
         {
             printf("[ lit ]\n");
-            // PUSH(INTARG());
-            printf("literal arg: %d\n", (int)INTARG());
+            PUSH(INTARG());
+            // printf("literal arg: %d\n", (int)INTARG());
+            print_stack(ds, s0);
         }
         NEXT();
 
@@ -439,7 +566,6 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     OP( DOT ):
         {
             // printf("[ . ]\n");
-
             cell val = POP();
             printf("%ld\n", (long)val);
         }

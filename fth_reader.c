@@ -211,7 +211,7 @@ static char* get_next_line(reader_state_t* rs)
 
     // Remove newline if present
     size_t len = strlen(rs->current_line);
-    if (len > 0 && rs->current_line[len-1] == '\n') 
+    if (len > 0 && rs->current_line[len-1] == '\n')
     {
         rs->current_line[len-1] = '\0';
     }
@@ -545,7 +545,7 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     OP( LIT ):
         {
             printf("[ lit ]\n");
-            // PUSH(INTARG());
+            PUSH(INTARG());
             printf("literal arg: %d\n", (int)INTARG());
         }
         NEXT();
