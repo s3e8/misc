@@ -317,6 +317,14 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
     defcode(".",            CODE(DOT),          0,              0);
     defcode("bye",          CODE(BYE),          0,              0);
 
+    // things NOT needed by core interpreter //
+    defcode("@",            CODE(FETCH),        0,              1);
+    defcode("immediate",    CODE(IMMEDIATE),    FLAG_IMMEDIATE, 0);
+    defcode("0branch",      CODE(BRANCH),       FLAG_HASARG,    1); // for future use
+    defcode("'",            CODE(TICK),         FLAG_HASARG,    1);
+    defcode(",",            CODE(COMMA),        FLAG_HASARG,    1);
+    defcode("!",            CODE(STORE),        0,              2);
+
     // define variables and constants //
     defconst("base",    10);
     defconst("state",   0);
@@ -489,13 +497,15 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
         {
             printf("[ colon ]\n");
 
-            // simple prompt to use reading into wordbuf
-            printf("> ");
-            if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
-            {
-                printf("error reading input\n");
-                NEXT();
-            }
+            // // simple prompt to use reading into wordbuf
+            // printf("> ");
+            // if (!fgets(wordbuf, WORD_NAME_MAX_LENGTH, stdin))
+            // {
+            //     printf("error reading input\n");
+            //     NEXT();
+            // }
+
+            read_word(&reader_state);
             
             // REMOVE THE NEWLINE!
             wordbuf[strcspn(wordbuf, "\n")] = '\0';
@@ -573,6 +583,98 @@ void forth_run(void*** rs, cell* ds, int argc, char** argv)
 
     OP( BYE ):
         return;
+
+
+
+
+
+
+    // the following are words NOT crucial to the core interpreter
+    OP( FETCH ):
+        {
+            printf("[ fetch ]\n");
+            cell addr = POP();
+            cell val = *(cell*)addr;
+            PUSH(val);
+            print_stack(ds, s0);
+        }
+        NEXT();
+
+    OP( IMMEDIATE ):
+        {
+            printf("[ immediate ]\n");
+            // toggle immediate flag on latest word
+            if (latest)
+            {
+                latest->flags ^= FLAG_IMMEDIATE;
+                printf("toggled immediate flag on word: %s to %s\n", latest->name, (latest->flags & FLAG_IMMEDIATE) ? "ON" : "OFF");
+            }
+            else
+            {
+                printf("no latest word to toggle immediate flag on\n");
+            }
+        }
+        NEXT();
+
+    OP( 0BRANCH ):
+        {
+            printf("[ 0branch ]\n");
+            tmp = INTARG();
+            if (!POP()) ip += (tmp/sizeof(void*)) - 1;
+        }
+        NEXT();
+
+    OP( TICK ):
+        {
+            printf("[ tick ]\n");
+
+            read_word(&reader_state);
+            word_hdr_t* de = find(reader_state.current_word);
+            if (!de)
+            {
+                printf("word not found: %s\n", reader_state.current_word);
+                NEXT();
+            }
+
+            cell token;
+            if (de->flags & FLAG_BUILTIN)
+            {
+                token = (cell)(*(cfa(de)));
+            }
+            else
+            {
+                token = (cell)cfa(de);
+            }
+
+            if (state == STATE_IMMEDIATE)
+            {
+                PUSH(token);
+            }
+            else
+            {
+                comma((cell)getcode("lit"));
+                comma(token);
+            }
+        }
+        NEXT();
+
+    OP( COMMA ):
+        {
+            printf("[ comma ]\n");
+            tmp = POP();
+            *(cell*)here = tmp;
+            here += sizeof(cell);    
+        }
+        NEXT();
+
+    OP( STORE ):
+        {
+            printf("[ store ]\n");
+            cell* ptr = (cell*)POP();
+            tmp = POP();
+            *ptr = tmp;    
+        }
+        NEXT();
 }
 
 int main(int argc, char** argv)
